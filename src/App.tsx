@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MobileFrame } from './components/ui/MobileFrame';
 import { OnboardingScreen } from './components/screens/OnboardingScreen';
@@ -158,6 +158,10 @@ function detectMood(transcript: string): MoodTag {
   return 'CALMING';
 }
 
+function isBlobUrl(url: string | null): url is string {
+  return Boolean(url && url.startsWith('blob:'));
+}
+
 function App() {
   const {
     currentScreen,
@@ -185,12 +189,30 @@ function App() {
   const [meditationDuration, setMeditationDuration] = useState(60); // Default 60 seconds
   const [playingSession, setPlayingSession] = useState<Session | null>(null);
   const [voiceAudioUrl, setVoiceAudioUrl] = useState<string | null>(null);
+  const voiceAudioUrlRef = useRef<string | null>(null);
   const [processingStep, setProcessingStep] = useState('Processing...');
   const [processingError, setProcessingError] = useState<string | null>(null);
   
   // AI Journey state
   const [journeyAvailable, setJourneyAvailable] = useState(false);
   const [journeySessions, setJourneySessions] = useState<DbSession[]>([]);
+
+  const updateVoiceAudioUrl = useCallback((nextAudioUrl: string | null) => {
+    const prevAudioUrl = voiceAudioUrlRef.current;
+    if (prevAudioUrl && prevAudioUrl !== nextAudioUrl && isBlobUrl(prevAudioUrl)) {
+      URL.revokeObjectURL(prevAudioUrl);
+    }
+    voiceAudioUrlRef.current = nextAudioUrl;
+    setVoiceAudioUrl(nextAudioUrl);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (isBlobUrl(voiceAudioUrlRef.current)) {
+        URL.revokeObjectURL(voiceAudioUrlRef.current);
+      }
+    };
+  }, []);
   
   // Check if AI Journey is available (3+ days of data in last 2 weeks)
   useEffect(() => {
@@ -276,7 +298,7 @@ function App() {
             setMeditationScript(progress.result.script);
           }
           if (progress.result.voiceAudioUrl) {
-            setVoiceAudioUrl(progress.result.voiceAudioUrl);
+            updateVoiceAudioUrl(progress.result.voiceAudioUrl);
           }
         }
       }, userTier, userId);
@@ -287,7 +309,7 @@ function App() {
       setCurrentMood(result.mood);
       setLocalScript(result.script);
       setMeditationScript(result.script);
-      setVoiceAudioUrl(result.voiceAudioUrl);
+      updateVoiceAudioUrl(result.voiceAudioUrl);
       
     } catch (error) {
       console.error('Error creating meditation:', error);
@@ -303,9 +325,9 @@ function App() {
       setCurrentMood(detectedMood);
       setLocalScript(script);
       setMeditationScript(script);
-      setVoiceAudioUrl(null);
+      updateVoiceAudioUrl(null);
     }
-  }, [setTranscript, setScreen, setCurrentMood, setMeditationScript, meditationDuration, user]);
+  }, [setTranscript, setScreen, setCurrentMood, setMeditationScript, meditationDuration, updateVoiceAudioUrl, user]);
 
   const handleProcessingComplete = async () => {
     // Credit is used when meditation is CREATED (after processing)
@@ -330,7 +352,7 @@ function App() {
       summary,
       mood: currentMood,
       meditationScript: meditationScript,
-      audioUrl: voiceAudioUrl,
+      audioUrl: isBlobUrl(voiceAudioUrl) ? null : voiceAudioUrl,
       duration: meditationDuration,
       createdAt: new Date().toISOString(),
     };
@@ -352,12 +374,14 @@ function App() {
   const handleSuccessComplete = () => {
     setShowSuccess(false);
     resetMeditation();
+    updateVoiceAudioUrl(null);
     setScreen('home');
     setMascotState('idle');
   };
 
   const handleMeditationClose = () => {
     resetMeditation();
+    updateVoiceAudioUrl(null);
     setScreen('home');
     setMascotState('idle');
   };
@@ -389,7 +413,7 @@ function App() {
     setLocalMood('CALMING'); // Journey meditations are generally calming/reflective
     setLocalScript(meditation.script);
     setMeditationDuration(meditation.duration);
-    setVoiceAudioUrl(meditation.voiceAudioUrl);
+    updateVoiceAudioUrl(meditation.voiceAudioUrl);
     setScreen('meditation');
     setMascotState('sleeping');
   };

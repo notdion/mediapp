@@ -48,10 +48,14 @@ const STREAK_PHRASES = [
 ];
 
 export function HomeScreen({ onStartRecording, onOpenJourney, journeyAvailable = false }: HomeScreenProps) {
-  const { user, mascotState, dailyLimit, checkDailyLimit, setScreen } = useAppStore();
+  const { user, mascotState, dailyLimit, checkDailyLimit, refreshDailyLimit, setScreen } = useAppStore();
   const isPremium = user?.tier === 'premium';
   const [phraseIndex, setPhraseIndex] = useState(0);
   const [congratsVariant, setCongratsVariant] = useState(0);
+  
+  useEffect(() => {
+    refreshDailyLimit();
+  }, [refreshDailyLimit]);
   
   const canMeditate = checkDailyLimit();
   const greeting = getGreeting();

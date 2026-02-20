@@ -5,6 +5,7 @@ import type { MoodTag, Session } from '../types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const SUPABASE_SERVICE_ROLE_KEY = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+const IS_DEV = import.meta.env.DEV;
 
 // Create Supabase client (will be null if not configured)
 export const supabase = SUPABASE_URL && SUPABASE_ANON_KEY 
@@ -12,8 +13,8 @@ export const supabase = SUPABASE_URL && SUPABASE_ANON_KEY
   : null;
 
 // Service role client for admin operations (bypasses RLS)
-// Only use for seeding test data - never expose to users
-const supabaseAdmin = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+// Dev-only for local/demo seeding. Never enable this in production client builds.
+const supabaseAdmin = IS_DEV && SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
   : null;
 

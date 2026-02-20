@@ -996,22 +996,14 @@ async function createFreeTierMeditation(
     
     // Get middle audio as ArrayBuffer and create a URL for duration calculation
     const middleBuffer = await fetch(voiceResult.audioUrl).then(r => r.arrayBuffer());
-    const middleBlob = new Blob([middleBuffer], { type: 'audio/mpeg' });
-    const middleUrl = URL.createObjectURL(middleBlob);
+    URL.revokeObjectURL(voiceResult.audioUrl);
     
-    // Concatenate with dynamic silence gaps based on actual audio durations
-    // This uses the actual silence MP3 file for proper gaps
+    // Concatenate with dynamic silence gaps based on decoded audio durations
     const combinedBlob = await concatenateWithSilenceGaps(
       prefetchedBuffers.introBuffer,
-      combo.introUrl,
       middleBuffer,
-      middleUrl,
       prefetchedBuffers.outroBuffer,
-      combo.outroUrl
     );
-    
-    // Clean up temporary URL
-    URL.revokeObjectURL(middleUrl);
     
     voiceAudioUrl = URL.createObjectURL(combinedBlob);
     alignment = voiceResult.alignment;
