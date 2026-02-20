@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MobileFrame } from './components/ui/MobileFrame';
 import { OnboardingScreen } from './components/screens/OnboardingScreen';
@@ -183,17 +183,14 @@ function App() {
   const [currentMood, setLocalMood] = useState<MoodTag>('CALMING');
   const [meditationScript, setLocalScript] = useState('');
   const [meditationDuration, setMeditationDuration] = useState(60); // Default 60 seconds
-  const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [playingSession, setPlayingSession] = useState<Session | null>(null);
   const [voiceAudioUrl, setVoiceAudioUrl] = useState<string | null>(null);
   const [processingStep, setProcessingStep] = useState('Processing...');
   const [processingError, setProcessingError] = useState<string | null>(null);
-  const audioBlobRef = useRef<Blob | null>(null);
   
   // AI Journey state
   const [journeyAvailable, setJourneyAvailable] = useState(false);
   const [journeySessions, setJourneySessions] = useState<DbSession[]>([]);
-  const [journeyMeditation, setJourneyMeditation] = useState<JourneyMeditation | null>(null);
   
   // Check if AI Journey is available (3+ days of data in last 2 weeks)
   useEffect(() => {
@@ -240,7 +237,7 @@ function App() {
       }
     }
     checkJourneyAvailability();
-  }, [user?.tier, user?.id, sessions.length]);
+  }, [sessions, user?.id, user?.tier]);
 
   const handleStartRecording = () => {
     if (!checkDailyLimit()) {
@@ -254,7 +251,6 @@ function App() {
   const handleRecordingComplete = useCallback(async (audioBlob: Blob, selectedDuration?: number) => {
     const duration = selectedDuration || meditationDuration;
     setMeditationDuration(duration);
-    audioBlobRef.current = audioBlob;
     setProcessingError(null);
     setScreen('processing');
     
@@ -322,7 +318,7 @@ function App() {
     let summary = "A personalized meditation session";
     try {
       summary = await generateSummary(transcript || "meditation session");
-    } catch (e) {
+    } catch {
       console.log('Summary generation failed, using default');
     }
     
@@ -339,7 +335,6 @@ function App() {
       createdAt: new Date().toISOString(),
     };
     addSession(session);
-    setCurrentSession(session);
     
     setScreen('meditation');
     setMascotState('sleeping');
@@ -357,14 +352,12 @@ function App() {
   const handleSuccessComplete = () => {
     setShowSuccess(false);
     resetMeditation();
-    setCurrentSession(null);
     setScreen('home');
     setMascotState('idle');
   };
 
   const handleMeditationClose = () => {
     resetMeditation();
-    setCurrentSession(null);
     setScreen('home');
     setMascotState('idle');
   };
@@ -393,7 +386,6 @@ function App() {
   };
 
   const handleJourneyMeditationStart = (meditation: JourneyMeditation) => {
-    setJourneyMeditation(meditation);
     setLocalMood('CALMING'); // Journey meditations are generally calming/reflective
     setLocalScript(meditation.script);
     setMeditationDuration(meditation.duration);

@@ -220,7 +220,6 @@ export const useAppStore = create<AppState>()(
       dailyLimit: getDefaultDailyLimit(),
       checkDailyLimit: () => {
         const { user, dailyLimit } = get();
-        const today = getTodayDateString();
         const lastReset = dailyLimit.nextResetTime;
         
         // Reset if it's a new day

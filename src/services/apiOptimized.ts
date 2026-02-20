@@ -216,7 +216,7 @@ PAUSE FORMAT: <break time="X.Xs"/>
 Examples: <break time="3.0s"/> or <break time="4.0s"/>
 
 EXAMPLE (12 words, 10 seconds pauses = 18 seconds):
-"Let that feeling wash over you. <break time=\"4.0s\"/> You deserve this peace. <break time=\"3.0s\"/> Breathe. <break time=\"3.0s\"/>"
+"Let that feeling wash over you. <break time="4.0s"/> You deserve this peace. <break time="3.0s"/> Breathe. <break time="3.0s"/>"
 
 Keep it SHORT. Only ${targetWords} words.`;
 
@@ -403,7 +403,7 @@ CONTENT GUIDELINES:
 - Warm, soothing tone
 
 EXAMPLE (30 words, 48 seconds of pauses = 1 minute total):
-"Welcome. <break time=\"3.0s\"/> Take a deep breath in. <break time=\"5.0s\"/> And slowly release. <break time=\"5.0s\"/> Feel your body relaxing. <break time=\"4.0s\"/> Let go of any tension. <break time=\"5.0s\"/> You are safe here. <break time=\"4.0s\"/> Breathe in peace. <break time=\"6.0s\"/> Breathe out stress. <break time=\"5.0s\"/> You are calm. <break time=\"4.0s\"/> You are at peace. <break time=\"7.0s\"/>"`;
+"Welcome. <break time="3.0s"/> Take a deep breath in. <break time="5.0s"/> And slowly release. <break time="5.0s"/> Feel your body relaxing. <break time="4.0s"/> Let go of any tension. <break time="5.0s"/> You are safe here. <break time="4.0s"/> Breathe in peace. <break time="6.0s"/> Breathe out stress. <break time="5.0s"/> You are calm. <break time="4.0s"/> You are at peace. <break time="7.0s"/>"`;
 
   // Build request body - note: gpt-5-nano does not accept temperature or max_tokens parameters
   const requestBody: Record<string, unknown> = {
@@ -759,8 +759,7 @@ export async function injectSilenceBetweenSentences(
 }
 
 export async function generateVoiceAudioStreaming(
-  script: string,
-  _targetDurationSeconds?: number
+  script: string
 ): Promise<{ audioUrl: string; rawBuffer: ArrayBuffer; wasStretched: boolean; alignment?: WordAlignment[] }> {
   const t0 = performance.now();
   
@@ -939,7 +938,7 @@ async function createFreeTierMeditation(
   };
   
   // Calculate middle duration (fixed 18 seconds)
-  const middleDuration = getMiddleDurationForFreeTier(combo.introDuration, combo.outroDuration);
+  const middleDuration = getMiddleDurationForFreeTier();
   
   // OPTIMIZATION: Start prefetching intro/outro audio IN PARALLEL with script generation
   const audioPrefetchPromise = prefetchAudioBuffers(combo.introUrl, combo.outroUrl);
@@ -991,7 +990,7 @@ async function createFreeTierMeditation(
   try {
     // Run voice generation and wait for audio prefetch in parallel
     const [voiceResult, prefetchedBuffers] = await Promise.all([
-      generateVoiceAudioStreaming(middleScript, middleDuration),
+      generateVoiceAudioStreaming(middleScript),
       audioPrefetchPromise
     ]);
     
@@ -1117,7 +1116,7 @@ async function createPremiumMeditation(
     });
     
     // Generate speech-only audio (ElevenLabs returns audio + alignment timestamps)
-    const voiceResult = await generateVoiceAudioStreaming(script, durationSeconds);
+    const voiceResult = await generateVoiceAudioStreaming(script);
     console.log(`[Premium] Raw speech generated: ${Date.now() - t0}ms`);
     
     // Step 4: Inject silence at sentence boundaries to hit exact target duration

@@ -263,7 +263,7 @@ export function isSupabaseConfigured(): boolean {
 // Creates 4 sessions spread across different days in the last 14 days
 // ============================================
 
-export async function seedDemoSessions(userId: string): Promise<{ success: boolean; count: number }> {
+export async function seedDemoSessions(): Promise<{ success: boolean; count: number }> {
   // Use admin client to bypass RLS
   if (!supabaseAdmin) {
     console.log('Supabase admin not configured, cannot seed demo data');

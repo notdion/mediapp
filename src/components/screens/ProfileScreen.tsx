@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { ArrowLeft, Crown, User, Calendar, Target, TrendingUp, ChevronRight, Play, Database, RotateCcw } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { profileSlothImages } from '../mascot/ZenBuddy';
+import { profileSlothImages } from '../mascot/slothAssets';
 import { Button } from '../ui/Button';
 import { useAppStore } from '../../store/useAppStore';
 import { seedDemoSessions, isSupabaseConfigured } from '../../services/supabase';
@@ -58,13 +58,13 @@ export function ProfileScreen({ onBack, onUpgrade, onPlaySession }: ProfileScree
     setSeedResult(null);
     
     try {
-      const result = await seedDemoSessions(user.id);
+      const result = await seedDemoSessions();
       if (result.success) {
         setSeedResult(`✓ Added ${result.count} demo sessions`);
       } else {
         setSeedResult('✗ Failed to seed data');
       }
-    } catch (err) {
+    } catch {
       setSeedResult('✗ Error seeding data');
     }
     

@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
 
 interface WaveformVisualizerProps {
   isActive: boolean;
@@ -12,35 +11,24 @@ export function WaveformVisualizer({
   barCount = 32,
   color = '#5A9E6B',
 }: WaveformVisualizerProps) {
-  const [levels, setLevels] = useState<number[]>(Array(barCount).fill(0.2));
-  
-  useEffect(() => {
-    if (!isActive) {
-      setLevels(Array(barCount).fill(0.2));
-      return;
-    }
-    
-    const interval = setInterval(() => {
-      setLevels(prev => prev.map(() => 0.2 + Math.random() * 0.8));
-    }, 80);
-    
-    return () => clearInterval(interval);
-  }, [isActive, barCount]);
-  
   return (
     <div className="waveform-visualizer">
       <div className="waveform-bars">
-        {levels.map((level, i) => (
+        {Array.from({ length: barCount }, (_, i) => (
           <motion.div
             key={i}
             className="waveform-bar"
             style={{ backgroundColor: color }}
             animate={{ 
-              scaleY: isActive ? level : 0.2,
-              opacity: isActive ? 0.8 + level * 0.2 : 0.4,
+              scaleY: isActive
+                ? [0.2 + (i % 3) * 0.1, 0.7 + (i % 5) * 0.06, 0.2 + (i % 3) * 0.1]
+                : 0.2,
+              opacity: isActive ? [0.45, 1, 0.45] : 0.4,
             }}
             transition={{ 
-              duration: 0.1,
+              duration: isActive ? 0.45 + (i % 6) * 0.06 : 0.2,
+              repeat: isActive ? Infinity : 0,
+              delay: isActive ? (i % 8) * 0.03 : 0,
               ease: 'easeOut',
             }}
           />

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Play, Pause, X, Volume2, ArrowLeft } from 'lucide-react';
+import { Play, Pause, Volume2, ArrowLeft } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import { ZenBuddy } from '../mascot/ZenBuddy';
 import type { Session, MoodTag } from '../../types';
@@ -13,9 +13,12 @@ export function SessionPlaybackScreen({ session, onClose }: SessionPlaybackScree
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const [audioDuration, setAudioDuration] = useState<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const hasPlayableAudio = Boolean(session.audioUrl);
 
-  const duration = session.duration || 60;
+  const duration = audioDuration || session.duration || 60;
 
   const moodColors: Record<MoodTag, { primary: string; secondary: string; bg: string }> = {
     UPLIFTING: { primary: '#FFD93D', secondary: '#FF9F43', bg: '#FFF9E6' },
@@ -32,11 +35,66 @@ export function SessionPlaybackScreen({ session, onClose }: SessionPlaybackScree
   const colors = moodColors[session.mood] || moodColors.CALMING;
 
   const togglePlayback = () => {
-    setIsPlaying(!isPlaying);
+    const nextPlayingState = !isPlaying;
+    setIsPlaying(nextPlayingState);
+
+    if (audioRef.current && hasPlayableAudio) {
+      if (nextPlayingState) {
+        audioRef.current.play().catch(() => {
+          setIsPlaying(false);
+        });
+      } else {
+        audioRef.current.pause();
+      }
+    }
   };
 
   useEffect(() => {
-    if (isPlaying) {
+    if (!session.audioUrl) return;
+
+    const audio = new Audio(session.audioUrl);
+    audio.preload = 'auto';
+    audioRef.current = audio;
+
+    const handleLoadedMetadata = () => {
+      if (audio.duration > 0) {
+        setAudioDuration(audio.duration);
+      }
+    };
+
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+      setProgress((audio.currentTime / Math.max(audio.duration || 1, 1)) * 100);
+    };
+
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setProgress(0);
+      audio.currentTime = 0;
+    };
+
+    const handleError = () => {
+      setIsPlaying(false);
+    };
+
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('error', handleError);
+
+    return () => {
+      audio.pause();
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('error', handleError);
+      audioRef.current = null;
+    };
+  }, [session.audioUrl]);
+
+  useEffect(() => {
+    if (isPlaying && !hasPlayableAudio) {
       timerRef.current = setInterval(() => {
         setCurrentTime(prev => {
           const newTime = prev + 0.1;
@@ -53,17 +111,13 @@ export function SessionPlaybackScreen({ session, onClose }: SessionPlaybackScree
           
           return newTime;
         });
-      }, 100);
-    } else {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
+        }, 100);
     }
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isPlaying, duration]);
+  }, [duration, hasPlayableAudio, isPlaying]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -208,10 +262,10 @@ export function SessionPlaybackScreen({ session, onClose }: SessionPlaybackScree
                   className="volume-bar"
                   style={{ background: colors.primary }}
                   animate={isPlaying ? {
-                    scaleY: [0.3 + Math.random() * 0.3, 0.6 + Math.random() * 0.4, 0.3 + Math.random() * 0.3],
+                    scaleY: [0.35 + i * 0.08, 0.65 + i * 0.05, 0.35 + i * 0.08],
                   } : { scaleY: 0.3 }}
                   transition={{
-                    duration: 0.5 + Math.random() * 0.5,
+                    duration: 0.65 + i * 0.08,
                     repeat: Infinity,
                   }}
                 />

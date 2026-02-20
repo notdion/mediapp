@@ -347,7 +347,7 @@ export async function generateJourneyMeditationScript(
 
   // Pull key themes from meditation scripts
   const recentScripts = sorted.slice(-5).map(s => s.meditation_script?.slice(0, 150) || '').filter(Boolean);
-  const scriptExcerpts = recentScripts.map((s, i) => `- "${s}..."`).join('\n');
+  const scriptExcerpts = recentScripts.map((s) => `- "${s}..."`).join('\n');
 
   const systemPrompt = `You are a meditation guide. Write a ${durationMinutes}-minute guided meditation that reflects deeply on this person's past 2 weeks.
 
@@ -438,7 +438,7 @@ export async function generateJourneyMeditationAudio(
   const targetDuration = 300;
 
   try {
-    const voiceResult = await generateVoiceAudioStreaming(script, targetDuration);
+    const voiceResult = await generateVoiceAudioStreaming(script);
     console.log('[Journey] Raw speech generated');
 
     let voiceAudioUrl: string | null = voiceResult.audioUrl;

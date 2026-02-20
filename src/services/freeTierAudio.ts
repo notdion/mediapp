@@ -384,7 +384,7 @@ export function concatenateWithPrefetchedBuffers(
 
 // Get the target duration for the middle portion of a free tier meditation
 // Total meditation should be ~60 seconds: intro (15-24s) + middle (~18s) + outro (15-24s)
-export function getMiddleDurationForFreeTier(_introDuration: number, _outroDuration: number): number {
+export function getMiddleDurationForFreeTier(): number {
   // Fixed 18 seconds for the personalized middle portion
   return 18;
 }

@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { Play, Pause, X, Volume2, VolumeX } from 'lucide-react';
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { slothImages } from '../mascot/ZenBuddy';
+import { slothImages } from '../mascot/slothAssets';
 import { useAppStore } from '../../store/useAppStore';
 import type { MoodTag } from '../../types';
 import '../mascot/ZenBuddy.css';
@@ -66,6 +66,8 @@ const ALL_TRACKS = [
   { src: sunriseMeditation, duration: 900 },
 ];
 
+const IMAGE_SWAP_DELAYS_MS = [20000, 26000, 32000, 38000, 44000, 50000];
+
 /**
  * Select the best track for the meditation duration
  * Prefers tracks that are within 15 seconds of the target duration, or longer (will fade out)
@@ -112,11 +114,11 @@ export function MeditationScreen({ mood, script, duration = 60, voiceAudioUrl, o
   const [isMusicMuted, setIsMusicMuted] = useState(false);
   const [isVoiceMuted, setIsVoiceMuted] = useState(false);
   
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const imageSwapTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const imageSwapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const musicAudioRef = useRef<HTMLAudioElement | null>(null);
   const voiceAudioRef = useRef<HTMLAudioElement | null>(null);
-  const currentTrackIndexRef = useRef(0);
+  const imageSwapIndexRef = useRef(0);
   
   // Real-time tracking refs to eliminate timer drift.
   // setInterval(fn, 100) drifts ~8-10ms per tick, accumulating 15-25s of error over 5 minutes.
@@ -160,8 +162,6 @@ export function MeditationScreen({ mood, script, duration = 60, voiceAudioUrl, o
     };
   }, [duration]);
 
-  // Track if we've already upgraded from intro-only to full audio
-  const hasUpgradedAudioRef = useRef(false);
   const lastVoiceUrlRef = useRef<string | null>(null);
 
   // Initialize voice audio if available - handles seamless URL switching during playback
@@ -189,7 +189,6 @@ export function MeditationScreen({ mood, script, duration = 60, voiceAudioUrl, o
     
     // If this is an upgrade (intro -> full audio) and user was playing, seamlessly continue
     if (isUpgrade && wasPlaying && currentPosition > 0) {
-      hasUpgradedAudioRef.current = true;
       voiceAudio.addEventListener('loadedmetadata', () => {
         voiceAudio.currentTime = currentPosition;
         voiceAudio.play().catch(() => {});
@@ -225,13 +224,14 @@ export function MeditationScreen({ mood, script, duration = 60, voiceAudioUrl, o
 
   // Random swap between meditating and sleeping images
   const scheduleImageSwap = () => {
-    const randomDelay = 20000 + Math.random() * 30000; // 20-50 seconds
+    const delay = IMAGE_SWAP_DELAYS_MS[imageSwapIndexRef.current % IMAGE_SWAP_DELAYS_MS.length];
+    imageSwapIndexRef.current += 1;
     imageSwapTimerRef.current = setTimeout(() => {
       setCurrentSlothImage(prev => 
         prev === slothImages.meditating ? slothImages.sleeping : slothImages.meditating
       );
       scheduleImageSwap(); // Schedule next swap
-    }, randomDelay);
+    }, delay);
   };
 
   const togglePlayback = () => {
@@ -348,7 +348,7 @@ export function MeditationScreen({ mood, script, duration = 60, voiceAudioUrl, o
         playStartTimestampRef.current = 0;
       }
     };
-  }, [isPlaying, duration, onComplete, setIsPlaying, setPlaybackProgress]);
+  }, [isMusicMuted, isPlaying, isVoiceMuted, duration, onComplete, setIsPlaying, setPlaybackProgress]);
 
   // Cleanup image swap timer on unmount
   useEffect(() => {

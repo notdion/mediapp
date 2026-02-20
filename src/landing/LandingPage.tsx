@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Sparkles, Heart, Brain, Mic, ArrowRight, Check, Apple, X } from 'lucide-react';
-import { slothImages } from '../components/mascot/ZenBuddy';
+import { slothImages } from '../components/mascot/slothAssets';
 import './LandingPage.css';
 
 export function LandingPage() {
@@ -10,6 +10,16 @@ export function LandingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showFeatures, setShowFeatures] = useState(false);
   const [showSlothBubble, setShowSlothBubble] = useState(false);
+  const particles = useMemo(
+    () => Array.from({ length: 30 }, (_, i) => ({
+      left: `${(i * 17) % 100}%`,
+      animationDelay: `${(i % 8) * 0.9}s`,
+      animationDuration: `${8 + (i % 6)}s`,
+      width: `${3 + (i % 4)}px`,
+      height: `${3 + (i % 4)}px`,
+    })),
+    []
+  );
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,14 +53,8 @@ export function LandingPage() {
 
       {/* Floating particles moving up */}
       <div className="particles">
-        {[...Array(30)].map((_, i) => (
-          <div key={i} className="particle" style={{
-            left: `${Math.random() * 100}%`,
-            animationDelay: `${Math.random() * 8}s`,
-            animationDuration: `${8 + Math.random() * 6}s`,
-            width: `${3 + Math.random() * 4}px`,
-            height: `${3 + Math.random() * 4}px`,
-          }} />
+        {particles.map((particle, i) => (
+          <div key={i} className="particle" style={particle} />
         ))}
       </div>
 
