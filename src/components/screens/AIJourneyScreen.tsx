@@ -14,6 +14,7 @@ import {
   setCachedJourney,
   getNewestSessionTimestamp,
 } from '../../services/aiJourney';
+import { isBlobUrl, revokeBlobUrl } from '../../utils/objectUrl';
 
 // ============================================
 // Props
@@ -24,10 +25,6 @@ interface AIJourneyScreenProps {
   userId: string;
   onBack: () => void;
   onStartMeditation: (meditation: JourneyMeditation) => void;
-}
-
-function isBlobUrl(url: string | null | undefined): url is string {
-  return Boolean(url && url.startsWith('blob:'));
 }
 
 // ============================================
@@ -238,7 +235,7 @@ export function AIJourneyScreen({ sessions, userId, onBack, onStartMeditation }:
       && previousAudioUrl !== adoptedMeditationAudioUrlRef.current
       && isBlobUrl(previousAudioUrl)
     ) {
-      URL.revokeObjectURL(previousAudioUrl);
+      revokeBlobUrl(previousAudioUrl);
     }
     meditationAudioUrlRef.current = nextAudioUrl;
     setMeditation(nextMeditation);
@@ -251,7 +248,7 @@ export function AIJourneyScreen({ sessions, userId, onBack, onStartMeditation }:
         && meditationAudioUrlRef.current !== adoptedMeditationAudioUrlRef.current
         && isBlobUrl(meditationAudioUrlRef.current)
       ) {
-        URL.revokeObjectURL(meditationAudioUrlRef.current);
+        revokeBlobUrl(meditationAudioUrlRef.current);
       }
     };
   }, []);

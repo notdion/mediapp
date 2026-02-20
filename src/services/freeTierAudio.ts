@@ -4,8 +4,16 @@
 // ============================================
 
 // Dynamically import all intro and outro clips
-const introModules = import.meta.glob('../components/audio/Free Intros/*.mp3', { eager: true, as: 'url' });
-const outroModules = import.meta.glob('../components/audio/Free Outros/*.mp3', { eager: true, as: 'url' });
+const introModules = import.meta.glob('../components/audio/Free Intros/*.mp3', {
+  eager: true,
+  query: '?url',
+  import: 'default'
+}) as Record<string, string>;
+const outroModules = import.meta.glob('../components/audio/Free Outros/*.mp3', {
+  eager: true,
+  query: '?url',
+  import: 'default'
+}) as Record<string, string>;
 
 // Import the silence file for gap filling
 import silenceUrl from '../components/audio/Accessories/Meditation - Silence.mp3';

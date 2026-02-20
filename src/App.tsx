@@ -16,6 +16,7 @@ import { createMeditationFast, generateSummary } from './services/apiOptimized';
 import { getJourneyData, type DbSession } from './services/supabase';
 import type { JourneyMeditation } from './services/aiJourney';
 import type { MoodTag, Session } from './types';
+import { isBlobUrl, replaceManagedObjectUrl, revokeBlobUrl } from './utils/objectUrl';
 
 // Sample meditation scripts for demo - base scripts that can be expanded
 const SAMPLE_SCRIPTS: Record<MoodTag, string> = {
@@ -158,10 +159,6 @@ function detectMood(transcript: string): MoodTag {
   return 'CALMING';
 }
 
-function isBlobUrl(url: string | null): url is string {
-  return Boolean(url && url.startsWith('blob:'));
-}
-
 function App() {
   const {
     currentScreen,
@@ -198,19 +195,13 @@ function App() {
   const [journeySessions, setJourneySessions] = useState<DbSession[]>([]);
 
   const updateVoiceAudioUrl = useCallback((nextAudioUrl: string | null) => {
-    const prevAudioUrl = voiceAudioUrlRef.current;
-    if (prevAudioUrl && prevAudioUrl !== nextAudioUrl && isBlobUrl(prevAudioUrl)) {
-      URL.revokeObjectURL(prevAudioUrl);
-    }
-    voiceAudioUrlRef.current = nextAudioUrl;
-    setVoiceAudioUrl(nextAudioUrl);
+    voiceAudioUrlRef.current = replaceManagedObjectUrl(voiceAudioUrlRef.current, nextAudioUrl);
+    setVoiceAudioUrl(voiceAudioUrlRef.current);
   }, []);
 
   useEffect(() => {
     return () => {
-      if (isBlobUrl(voiceAudioUrlRef.current)) {
-        URL.revokeObjectURL(voiceAudioUrlRef.current);
-      }
+      revokeBlobUrl(voiceAudioUrlRef.current);
     };
   }, []);
   
