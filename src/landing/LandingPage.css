@@ -1,0 +1,694 @@
+/* ============================================
+   ZenPal Landing Page Styles
+   ============================================ */
+
+.landing-page {
+  height: 100vh;
+  width: 100vw;
+  background: linear-gradient(135deg, #0A1A10 0%, #122A1C 50%, #0D1F15 100%);
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* ============================================
+   Foggy Green Background
+   ============================================ */
+.bg-fog {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.fog-layer {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.5;
+}
+
+.fog-1 {
+  width: 800px;
+  height: 800px;
+  background: radial-gradient(circle, rgba(90, 158, 107, 0.4) 0%, transparent 70%);
+  top: -300px;
+  right: -200px;
+  animation: fogDrift 25s ease-in-out infinite;
+}
+
+.fog-2 {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(61, 122, 79, 0.35) 0%, transparent 70%);
+  bottom: -200px;
+  left: 30%;
+  animation: fogDrift 30s ease-in-out infinite reverse;
+}
+
+.fog-3 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(124, 183, 139, 0.3) 0%, transparent 70%);
+  top: 40%;
+  left: -100px;
+  animation: fogDrift 20s ease-in-out infinite;
+  animation-delay: -10s;
+}
+
+@keyframes fogDrift {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.4;
+  }
+  33% {
+    transform: translate(40px, -30px) scale(1.1);
+    opacity: 0.5;
+  }
+  66% {
+    transform: translate(-30px, 20px) scale(0.95);
+    opacity: 0.45;
+  }
+}
+
+/* ============================================
+   Particles Moving Up
+   ============================================ */
+.particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.particle {
+  position: absolute;
+  bottom: -20px;
+  background: rgba(90, 158, 107, 0.5);
+  border-radius: 50%;
+  animation: particleRise linear infinite;
+  box-shadow: 0 0 6px rgba(90, 158, 107, 0.4);
+}
+
+@keyframes particleRise {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  90% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(-100vh) scale(0.5);
+    opacity: 0;
+  }
+}
+
+/* ============================================
+   Content Layout
+   ============================================ */
+.landing-content {
+  position: relative;
+  z-index: 10;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 2rem;
+}
+
+/* ============================================
+   Hero Section - Positioned above the cards
+   ============================================ */
+.hero-section {
+  position: absolute;
+  top: 4rem;
+  right: calc(18% + 10px);
+  z-index: 15;
+}
+
+.logo-centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.logo-text-large {
+  font-size: 5.5rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  margin: 0;
+  background: linear-gradient(
+    135deg, 
+    #5A9E6B 0%, 
+    #A8D5BA 25%,
+    #FFD93D 50%,
+    #A8D5BA 75%,
+    #5A9E6B 100%
+  );
+  background-size: 400% 400%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: glowWave 6s ease-in-out infinite;
+}
+
+/* ============================================
+   Cards Section - Positioned to the left, meeting ZenPal in the middle
+   ============================================ */
+.cards-section {
+  position: absolute;
+  right: calc(18% + 10px);
+  bottom: 10%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  z-index: 20;
+}
+
+/* ============================================
+   Features Button with Animated Label
+   ============================================ */
+.features-button-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.features-label-wrapper {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  overflow: hidden;
+  height: 30px;
+  margin-bottom: 8px;
+}
+
+.features-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+  animation: labelReveal 10s ease-in-out infinite;
+}
+
+@keyframes labelReveal {
+  0%, 100% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  5% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  45% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+.features-button {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #7CB78B;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 
+    0 4px 20px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.features-button:hover {
+  background: rgba(90, 158, 107, 0.2);
+  border-color: rgba(90, 158, 107, 0.4);
+  transform: scale(1.05);
+  box-shadow: 
+    0 8px 30px rgba(90, 158, 107, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.features-button svg {
+  animation: sparkleRotate 3s ease-in-out infinite;
+}
+
+@keyframes sparkleRotate {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(15deg) scale(1.1); }
+}
+
+/* Features Popup - High z-index to be on top */
+.features-popup {
+  position: absolute;
+  left: calc(100% + 16px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(20, 40, 28, 0.95);
+  backdrop-filter: blur(30px);
+  border: 1px solid rgba(90, 158, 107, 0.3);
+  border-radius: 20px;
+  padding: 20px;
+  min-width: 260px;
+  box-shadow: 
+    0 20px 50px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  z-index: 100;
+}
+
+.features-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.features-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.feature-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.feature-item:first-child {
+  padding-top: 0;
+}
+
+.feature-item svg {
+  color: #5A9E6B;
+  flex-shrink: 0;
+}
+
+.feature-item span {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+/* ============================================
+   Glowing Cards
+   ============================================ */
+.card-wrapper {
+  position: relative;
+}
+
+.card {
+  position: relative;
+  border-radius: 24px;
+  overflow: hidden;
+  width: 280px;
+}
+
+.glow-card {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Card content with glowing wave background */
+.card-content {
+  position: relative;
+  z-index: 2;
+  padding: 24px;
+  backdrop-filter: blur(20px);
+  background: linear-gradient(
+    135deg, 
+    rgba(90, 158, 107, 0.25) 0%, 
+    rgba(168, 213, 186, 0.3) 25%,
+    rgba(255, 217, 61, 0.2) 50%,
+    rgba(168, 213, 186, 0.3) 75%,
+    rgba(90, 158, 107, 0.25) 100%
+  );
+  background-size: 400% 400%;
+  animation: glowWave 6s ease-in-out infinite;
+}
+
+@keyframes glowWave {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: white;
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 16px;
+}
+
+.card-header svg {
+  color: #5A9E6B;
+}
+
+/* QR Code - Clickable with hover effect */
+.qr-code {
+  width: 140px;
+  height: 140px;
+  background: white;
+  border-radius: 16px;
+  padding: 10px;
+  margin: 0 auto 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.qr-code:hover {
+  transform: scale(1.05);
+  box-shadow: 
+    0 8px 24px rgba(90, 158, 107, 0.4),
+    0 0 0 3px rgba(90, 158, 107, 0.3);
+}
+
+.qr-code:active {
+  transform: scale(1.02);
+}
+
+.qr-svg {
+  width: 100%;
+  height: 100%;
+  color: #1A3D2E;
+}
+
+.card-hint {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.8125rem;
+  text-align: center;
+  font-weight: 600;
+}
+
+/* Newsletter */
+.newsletter-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.newsletter-icon {
+  color: #FFD93D;
+  flex-shrink: 0;
+}
+
+.newsletter-header h3 {
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: white;
+  margin: 0 0 2px 0;
+}
+
+.newsletter-header p {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.8125rem;
+  margin: 0;
+}
+
+.newsletter-form {
+  display: flex;
+  gap: 10px;
+}
+
+.newsletter-form input {
+  flex: 1;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  color: white;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  min-width: 0;
+}
+
+.newsletter-form input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.newsletter-form input:focus {
+  outline: none;
+  border-color: #5A9E6B;
+  background: rgba(90, 158, 107, 0.1);
+}
+
+.newsletter-form button {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #5A9E6B 0%, #3D7A4F 100%);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.newsletter-form button:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(90, 158, 107, 0.4);
+}
+
+.newsletter-form button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.success-message {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.success-icon {
+  width: 38px;
+  height: 38px;
+  background: linear-gradient(135deg, #5A9E6B 0%, #3D7A4F 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+}
+
+.success-message p {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* ============================================
+   Sloth Mascot - Bottom Left Corner (Static, 6x size)
+   ============================================ */
+.landing-mascot {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 600px;
+  height: 800px;
+  z-index: 50;
+  cursor: pointer;
+}
+
+.landing-mascot img {
+  width: 1200px;
+  height: auto;
+  display: block;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  filter: drop-shadow(0 -10px 40px rgba(0, 0, 0, 0.3));
+  transition: filter 0.3s ease;
+  pointer-events: none;
+}
+
+.landing-mascot:hover img {
+  filter: drop-shadow(0 -10px 50px rgba(90, 158, 107, 0.5));
+}
+
+/* Speech bubble */
+.sloth-speech-bubble {
+  position: absolute;
+  bottom: 75%;
+  left: 200px;
+  transform: translateX(-50%);
+  background: white;
+  padding: 18px 24px;
+  border-radius: 24px;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    0 2px 8px rgba(0, 0, 0, 0.1);
+  max-width: 320px;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.sloth-speech-bubble span {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: #1A3D2E;
+  line-height: 1.5;
+  display: block;
+}
+
+.speech-bubble-tail {
+  position: absolute;
+  bottom: -12px;
+  left: 40px;
+  width: 0;
+  height: 0;
+  border-left: 14px solid transparent;
+  border-right: 14px solid transparent;
+  border-top: 14px solid white;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.05));
+}
+
+/* ============================================
+   Responsive Design
+   ============================================ */
+@media (max-width: 1024px) {
+  .logo-text-large {
+    font-size: 4.5rem;
+  }
+
+  .cards-section {
+    right: 5%;
+  }
+
+  .landing-mascot {
+    width: 450px;
+    height: 600px;
+  }
+
+  .landing-mascot img {
+    width: 900px;
+  }
+
+  .sloth-speech-bubble {
+    left: 160px;
+    bottom: 70%;
+  }
+}
+
+@media (max-width: 768px) {
+  .landing-content {
+    padding: 1.5rem;
+  }
+
+  .hero-section {
+    top: 1.5rem;
+  }
+
+  .logo-text-large {
+    font-size: 3.5rem;
+  }
+
+  .tagline {
+    font-size: 1.25rem;
+  }
+
+  .cards-section {
+    right: 1.5rem;
+    bottom: 1.5rem;
+  }
+
+  .card {
+    width: 260px;
+  }
+
+  .landing-mascot img {
+    width: 700px;
+  }
+
+  .features-popup {
+    left: auto;
+    right: calc(100% + 16px);
+  }
+}
+
+@media (max-width: 480px) {
+  .logo-text-large {
+    font-size: 2.75rem;
+  }
+
+  .tagline {
+    font-size: 1rem;
+  }
+
+  .cards-section {
+    right: 1rem;
+    left: 1rem;
+    bottom: 1rem;
+    align-items: stretch;
+  }
+
+  .card {
+    width: 100%;
+  }
+
+  .landing-mascot img {
+    width: 500px;
+  }
+}

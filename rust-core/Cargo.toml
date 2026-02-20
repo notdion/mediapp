@@ -1,0 +1,17 @@
+[package]
+name = "zenpal-core"
+version = "0.1.0"
+edition = "2021"
+description = "Portable meditation pacing engine for ZenPal"
+license = "MIT"
+
+[lib]
+name = "zenpal_core"
+path = "src/lib.rs"
+
+[dependencies]
+# Minimal dependencies for portability
+regex = "1.10"
+
+[dev-dependencies]
+# For testing

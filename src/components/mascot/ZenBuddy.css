@@ -1,0 +1,119 @@
+.zen-buddy-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.zen-buddy-wrapper {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.zen-buddy-image {
+  object-fit: contain;
+  filter: drop-shadow(0 8px 20px rgba(90, 158, 107, 0.25));
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* CSS Animations */
+@keyframes zen-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes zen-wiggle {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.03) rotate(2deg); }
+  75% { transform: scale(1.03) rotate(-2deg); }
+}
+
+@keyframes zen-pulse-gentle {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+@keyframes zen-bounce-happy {
+  0%, 100% { transform: translateY(0) scale(1) rotate(0deg); }
+  25% { transform: translateY(-12px) scale(1.08) rotate(-3deg); }
+  75% { transform: translateY(-12px) scale(1.08) rotate(3deg); }
+}
+
+@keyframes zen-breathe {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(3px); }
+}
+
+.animate-float {
+  animation: zen-float 2.5s ease-in-out infinite;
+}
+
+.animate-wiggle {
+  animation: zen-wiggle 0.8s ease-in-out infinite;
+}
+
+.animate-pulse-gentle {
+  animation: zen-pulse-gentle 1.5s ease-in-out infinite;
+}
+
+.animate-bounce-happy {
+  animation: zen-bounce-happy 0.6s ease-in-out infinite;
+}
+
+.animate-breathe {
+  animation: zen-breathe 3s ease-in-out infinite;
+}
+
+/* Effect styles */
+.listening-rings {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+}
+
+.listening-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: 3px solid #5A9E6B;
+  border-radius: 50%;
+}
+
+.thinking-dots {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(90, 158, 107, 0.15);
+}
+
+.thinking-dot {
+  width: 10px;
+  height: 10px;
+  background: #5A9E6B;
+  border-radius: 50%;
+}
+
+.celebration-sparkles {
+  position: absolute;
+  inset: -20px;
+  pointer-events: none;
+}
+
+.sparkle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
