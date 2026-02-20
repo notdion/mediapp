@@ -1,8 +1,13 @@
 import { motion } from 'framer-motion';
-import { Play, Pause, X, Volume2, ArrowLeft } from 'lucide-react';
+import { Play, Pause, Volume2, ArrowLeft } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import { ZenBuddy } from '../mascot/ZenBuddy';
-import type { Session, MoodTag } from '../../types';
+import type { Session } from '../../types';
+import { MOOD_THEMES } from '../../theme/moodThemes';
+import { FADE_TRANSITION } from '../../theme/motion';
+import { fadeAudioVolume } from '../../utils/audioFades';
+
+const AMBIENT_CIRCLE_DURATIONS = [6, 8, 10] as const;
 
 interface SessionPlaybackScreenProps {
   session: Session;
@@ -13,30 +18,83 @@ export function SessionPlaybackScreen({ session, onClose }: SessionPlaybackScree
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const [audioDuration, setAudioDuration] = useState<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const hasPlayableAudio = Boolean(session.audioUrl);
 
-  const duration = session.duration || 60;
+  const duration = audioDuration || session.duration || 60;
 
-  const moodColors: Record<MoodTag, { primary: string; secondary: string; bg: string }> = {
-    UPLIFTING: { primary: '#FFD93D', secondary: '#FF9F43', bg: '#FFF9E6' },
-    CALMING: { primary: '#7CB78B', secondary: '#5A9E6B', bg: '#E8F5EC' },
-    ENERGIZING: { primary: '#FF9F43', secondary: '#FF6B6B', bg: '#FFF4E6' },
-    HEALING: { primary: '#5A9E6B', secondary: '#7EC8E3', bg: '#E8F5EC' },
-    FOCUSED: { primary: '#5A9E6B', secondary: '#7CB78B', bg: '#E8F5EC' },
-    SLEEPY: { primary: '#B8A9C9', secondary: '#7CB78B', bg: '#F5F3FF' },
-    ANXIOUS: { primary: '#A8D5BA', secondary: '#7CB78B', bg: '#F0F7EE' },
-    GRATEFUL: { primary: '#FF6B6B', secondary: '#FF9F43', bg: '#FFF0F0' },
-    MOTIVATED: { primary: '#FF9F43', secondary: '#FFD93D', bg: '#FFF4E6' },
-  };
-
-  const colors = moodColors[session.mood] || moodColors.CALMING;
+  const colors = MOOD_THEMES[session.mood] || MOOD_THEMES.CALMING;
 
   const togglePlayback = () => {
-    setIsPlaying(!isPlaying);
+    const nextPlayingState = !isPlaying;
+    setIsPlaying(nextPlayingState);
+
+    if (audioRef.current && hasPlayableAudio) {
+      if (nextPlayingState) {
+        const activeAudio = audioRef.current;
+        activeAudio.volume = 0;
+        activeAudio.play().then(() => {
+          void fadeAudioVolume(activeAudio, 1, 700);
+        }).catch(() => {
+          setIsPlaying(false);
+        });
+      } else {
+        const activeAudio = audioRef.current;
+        void fadeAudioVolume(activeAudio, 0, 250).then(() => {
+          activeAudio.pause();
+        });
+      }
+    }
   };
 
   useEffect(() => {
-    if (isPlaying) {
+    if (!session.audioUrl) return;
+
+    const audio = new Audio(session.audioUrl);
+    audio.preload = 'auto';
+    audioRef.current = audio;
+
+    const handleLoadedMetadata = () => {
+      if (audio.duration > 0) {
+        setAudioDuration(audio.duration);
+      }
+    };
+
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+      setProgress((audio.currentTime / Math.max(audio.duration || 1, 1)) * 100);
+    };
+
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setProgress(0);
+      audio.currentTime = 0;
+    };
+
+    const handleError = () => {
+      setIsPlaying(false);
+    };
+
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('error', handleError);
+
+    return () => {
+      audio.pause();
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('error', handleError);
+      audioRef.current = null;
+    };
+  }, [session.audioUrl]);
+
+  useEffect(() => {
+    if (isPlaying && !hasPlayableAudio) {
       timerRef.current = setInterval(() => {
         setCurrentTime(prev => {
           const newTime = prev + 0.1;
@@ -53,17 +111,13 @@ export function SessionPlaybackScreen({ session, onClose }: SessionPlaybackScree
           
           return newTime;
         });
-      }, 100);
-    } else {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
+        }, 100);
     }
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isPlaying, duration]);
+  }, [duration, hasPlayableAudio, isPlaying]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -80,7 +134,7 @@ export function SessionPlaybackScreen({ session, onClose }: SessionPlaybackScree
   };
 
   return (
-    <div className="session-playback-screen" style={{ background: colors.bg }}>
+    <div className="session-playback-screen" style={{ background: colors.background }}>
       {/* Header */}
       <motion.header 
         className="playback-header"
@@ -99,7 +153,7 @@ export function SessionPlaybackScreen({ session, onClose }: SessionPlaybackScree
         className="session-info"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
+        transition={{ ...FADE_TRANSITION, delay: 0.1 }}
       >
         <div 
           className="mood-badge"
@@ -112,7 +166,7 @@ export function SessionPlaybackScreen({ session, onClose }: SessionPlaybackScree
 
       {/* Ambient Background */}
       <div className="ambient-bg">
-        {[...Array(3)].map((_, i) => (
+        {AMBIENT_CIRCLE_DURATIONS.map((duration, i) => (
           <motion.div
             key={i}
             className="ambient-circle"
@@ -124,7 +178,7 @@ export function SessionPlaybackScreen({ session, onClose }: SessionPlaybackScree
               opacity: [0.2, 0.4, 0.2],
             }}
             transition={{
-              duration: 6 + i * 2,
+              duration,
               repeat: Infinity,
               ease: 'easeInOut',
             }}
@@ -137,7 +191,7 @@ export function SessionPlaybackScreen({ session, onClose }: SessionPlaybackScree
         className="playback-content"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
+        transition={{ ...FADE_TRANSITION, delay: 0.2 }}
       >
         {/* Mascot */}
         <div className="mascot-section">
@@ -208,10 +262,10 @@ export function SessionPlaybackScreen({ session, onClose }: SessionPlaybackScree
                   className="volume-bar"
                   style={{ background: colors.primary }}
                   animate={isPlaying ? {
-                    scaleY: [0.3 + Math.random() * 0.3, 0.6 + Math.random() * 0.4, 0.3 + Math.random() * 0.3],
+                    scaleY: [0.35 + i * 0.08, 0.65 + i * 0.05, 0.35 + i * 0.08],
                   } : { scaleY: 0.3 }}
                   transition={{
-                    duration: 0.5 + Math.random() * 0.5,
+                    duration: 0.65 + i * 0.08,
                     repeat: Infinity,
                   }}
                 />

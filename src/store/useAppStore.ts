@@ -101,6 +101,7 @@ interface AppState {
   
   // Daily limits
   dailyLimit: DailyLimit;
+  refreshDailyLimit: () => void;
   checkDailyLimit: () => boolean;
   incrementDailySession: () => void;
   resetDailyLimit: () => void;
@@ -123,6 +124,11 @@ const getDefaultUser = (): User => ({
 });
 
 const getTodayDateString = () => new Date().toISOString().split('T')[0];
+const stripEphemeralAudioUrls = (sessions: Session[]): Session[] =>
+  sessions.map((session) => ({
+    ...session,
+    audioUrl: session.audioUrl?.startsWith('blob:') ? null : session.audioUrl,
+  }));
 
 const getDefaultDailyLimit = (): DailyLimit => ({
   canMeditate: true,
@@ -218,30 +224,33 @@ export const useAppStore = create<AppState>()(
       
       // Daily limits
       dailyLimit: getDefaultDailyLimit(),
+      refreshDailyLimit: () => {
+        const { dailyLimit } = get();
+        if (new Date() > new Date(dailyLimit.nextResetTime)) {
+          set({ dailyLimit: getDefaultDailyLimit() });
+        }
+      },
       checkDailyLimit: () => {
         const { user, dailyLimit } = get();
-        const today = getTodayDateString();
-        const lastReset = dailyLimit.nextResetTime;
-        
-        // Reset if it's a new day
-        if (new Date() > new Date(lastReset)) {
-          set({ dailyLimit: getDefaultDailyLimit() });
-          return true;
-        }
+        const isExpired = new Date() > new Date(dailyLimit.nextResetTime);
+        const activeLimit = isExpired ? getDefaultDailyLimit() : dailyLimit;
         
         // Premium users have unlimited
         if (user?.tier === 'premium') return true;
         
-        return dailyLimit.sessionsToday < dailyLimit.maxSessions;
+        return activeLimit.sessionsToday < activeLimit.maxSessions;
       },
       incrementDailySession: () => {
         const { dailyLimit, user } = get();
-        const newCount = dailyLimit.sessionsToday + 1;
-        const canMeditate = user?.tier === 'premium' || newCount < dailyLimit.maxSessions;
+        const activeLimit = new Date() > new Date(dailyLimit.nextResetTime)
+          ? getDefaultDailyLimit()
+          : dailyLimit;
+        const newCount = activeLimit.sessionsToday + 1;
+        const canMeditate = user?.tier === 'premium' || newCount < activeLimit.maxSessions;
         
         set({
           dailyLimit: {
-            ...dailyLimit,
+            ...activeLimit,
             sessionsToday: newCount,
             canMeditate,
           },
@@ -269,7 +278,7 @@ export const useAppStore = create<AppState>()(
       name: 'zenpal-storage',
       partialize: (state) => ({
         user: state.user,
-        sessions: state.sessions,
+        sessions: stripEphemeralAudioUrls(state.sessions),
         dailyLimit: state.dailyLimit,
       }),
       merge: (persistedState, currentState) => {
@@ -279,7 +288,7 @@ export const useAppStore = create<AppState>()(
           ...persisted,
           // Use demo sessions if persisted sessions array is empty
           sessions: (persisted.sessions && persisted.sessions.length > 0) 
-            ? persisted.sessions 
+            ? stripEphemeralAudioUrls(persisted.sessions) 
             : getDemoSessions(),
         };
       },

@@ -230,7 +230,7 @@ export function atomizeText(text: string, config: PacingConfig = DEFAULT_CONFIG)
 
   // Regex to split on punctuation while capturing the punctuation
   // Matches: content followed by optional punctuation (comma, period, question, exclamation, or newline)
-  const regex = /([^,.\?!\n]+)([,.\?!\n]*)/g;
+  const regex = /([^,.?!\n]+)([,.?!\n]*)/g;
   let match;
 
   while ((match = regex.exec(text)) !== null) {

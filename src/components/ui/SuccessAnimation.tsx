@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 
 interface SuccessAnimationProps {
   isVisible: boolean;
@@ -8,19 +8,21 @@ interface SuccessAnimationProps {
 }
 
 export function SuccessAnimation({ isVisible, streakCount, onComplete }: SuccessAnimationProps) {
-  const [confetti, setConfetti] = useState<Array<{ id: number; color: string; x: number; delay: number }>>([]);
+  const confetti = useMemo(
+    () => {
+      const colors = ['#FFD93D', '#FF6B6B', '#5A9E6B', '#7CB78B', '#A8D5BA', '#FF9F43'];
+      return Array.from({ length: 40 }, (_, i) => ({
+        id: i,
+        color: colors[i % colors.length],
+        x: (i * 13) % 100,
+        delay: (i % 10) * 0.05,
+      }));
+    },
+    []
+  );
   
   useEffect(() => {
     if (isVisible) {
-      const colors = ['#FFD93D', '#FF6B6B', '#5A9E6B', '#7CB78B', '#A8D5BA', '#FF9F43'];
-      const newConfetti = Array.from({ length: 40 }, (_, i) => ({
-        id: i,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        x: Math.random() * 100,
-        delay: Math.random() * 0.5,
-      }));
-      setConfetti(newConfetti);
-      
       const timer = setTimeout(() => {
         onComplete?.();
       }, 3000);

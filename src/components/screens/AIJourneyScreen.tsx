@@ -14,6 +14,7 @@ import {
   setCachedJourney,
   getNewestSessionTimestamp,
 } from '../../services/aiJourney';
+import { isBlobUrl, revokeBlobUrl } from '../../utils/objectUrl';
 
 // ============================================
 // Props
@@ -222,6 +223,35 @@ export function AIJourneyScreen({ sessions, userId, onBack, onStartMeditation }:
   const [activeProgressSection, setActiveProgressSection] = useState<'start' | 'middle' | 'end' | null>(null);
 
   const generatingRef = useRef(false);
+  const meditationAudioUrlRef = useRef<string | null>(null);
+  const adoptedMeditationAudioUrlRef = useRef<string | null>(null);
+
+  const setMeditationWithCleanup = useCallback((nextMeditation: JourneyMeditation | null) => {
+    const previousAudioUrl = meditationAudioUrlRef.current;
+    const nextAudioUrl = nextMeditation?.voiceAudioUrl ?? null;
+    if (
+      previousAudioUrl
+      && previousAudioUrl !== nextAudioUrl
+      && previousAudioUrl !== adoptedMeditationAudioUrlRef.current
+      && isBlobUrl(previousAudioUrl)
+    ) {
+      revokeBlobUrl(previousAudioUrl);
+    }
+    meditationAudioUrlRef.current = nextAudioUrl;
+    setMeditation(nextMeditation);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (
+        meditationAudioUrlRef.current
+        && meditationAudioUrlRef.current !== adoptedMeditationAudioUrlRef.current
+        && isBlobUrl(meditationAudioUrlRef.current)
+      ) {
+        revokeBlobUrl(meditationAudioUrlRef.current);
+      }
+    };
+  }, []);
 
   // ---- Load analysis + meditation (with IndexedDB caching) ----
   useEffect(() => {
@@ -243,7 +273,7 @@ export function AIJourneyScreen({ sessions, userId, onBack, onStartMeditation }:
           // If audio blob is cached, create URL instantly — no network calls needed
           if (cached.audioBlob && cached.meditationScript) {
             const url = URL.createObjectURL(cached.audioBlob);
-            setMeditation({
+            setMeditationWithCleanup({
               script: cached.meditationScript,
               voiceAudioUrl: url,
               duration: 300,
@@ -256,7 +286,7 @@ export function AIJourneyScreen({ sessions, userId, onBack, onStartMeditation }:
             setMeditationStep('Preparing your meditation...');
             const { meditation: med, audioBlob } = await generateJourneyMeditationAudio(cached.meditationScript);
             if (!cancelled) {
-              setMeditation(med);
+              setMeditationWithCleanup(med);
               setIsLoadingMeditation(false);
               generatingRef.current = false;
               // Update cache with the audio blob
@@ -286,7 +316,7 @@ export function AIJourneyScreen({ sessions, userId, onBack, onStartMeditation }:
           const { meditation: med, audioBlob } = await generateJourneyMeditationAudio(script);
           if (cancelled) return;
 
-          setMeditation(med);
+          setMeditationWithCleanup(med);
           setIsLoadingMeditation(false);
           generatingRef.current = false;
 
@@ -307,7 +337,7 @@ export function AIJourneyScreen({ sessions, userId, onBack, onStartMeditation }:
 
     load();
     return () => { cancelled = true; };
-  }, [sessions, userId]);
+  }, [sessions, setMeditationWithCleanup, userId]);
 
   // ---- Handlers ----
   const handleDotClick = useCallback((day: CalendarDay) => {
@@ -320,6 +350,7 @@ export function AIJourneyScreen({ sessions, userId, onBack, onStartMeditation }:
 
   const handlePlayMeditation = useCallback(() => {
     if (meditation) {
+      adoptedMeditationAudioUrlRef.current = meditation.voiceAudioUrl || null;
       onStartMeditation(meditation);
     }
   }, [meditation, onStartMeditation]);

@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MobileFrame } from './components/ui/MobileFrame';
 import { OnboardingScreen } from './components/screens/OnboardingScreen';
@@ -16,6 +16,8 @@ import { createMeditationFast, generateSummary } from './services/apiOptimized';
 import { getJourneyData, type DbSession } from './services/supabase';
 import type { JourneyMeditation } from './services/aiJourney';
 import type { MoodTag, Session } from './types';
+import { isBlobUrl, replaceManagedObjectUrl, revokeBlobUrl } from './utils/objectUrl';
+import { SCREEN_TRANSITION } from './theme/motion';
 
 // Sample meditation scripts for demo - base scripts that can be expanded
 const SAMPLE_SCRIPTS: Record<MoodTag, string> = {
@@ -183,17 +185,31 @@ function App() {
   const [currentMood, setLocalMood] = useState<MoodTag>('CALMING');
   const [meditationScript, setLocalScript] = useState('');
   const [meditationDuration, setMeditationDuration] = useState(60); // Default 60 seconds
-  const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [playingSession, setPlayingSession] = useState<Session | null>(null);
   const [voiceAudioUrl, setVoiceAudioUrl] = useState<string | null>(null);
+  const voiceAudioUrlRef = useRef<string | null>(null);
   const [processingStep, setProcessingStep] = useState('Processing...');
   const [processingError, setProcessingError] = useState<string | null>(null);
-  const audioBlobRef = useRef<Blob | null>(null);
   
   // AI Journey state
   const [journeyAvailable, setJourneyAvailable] = useState(false);
   const [journeySessions, setJourneySessions] = useState<DbSession[]>([]);
-  const [journeyMeditation, setJourneyMeditation] = useState<JourneyMeditation | null>(null);
+
+  /**
+   * Centralized object-URL ownership for meditation audio.
+   * We keep the lifecycle here so audio URL semantics remain portable for the
+   * planned Swift migration (single owner -> predictable release timing).
+   */
+  const updateVoiceAudioUrl = useCallback((nextAudioUrl: string | null) => {
+    voiceAudioUrlRef.current = replaceManagedObjectUrl(voiceAudioUrlRef.current, nextAudioUrl);
+    setVoiceAudioUrl(voiceAudioUrlRef.current);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      revokeBlobUrl(voiceAudioUrlRef.current);
+    };
+  }, []);
   
   // Check if AI Journey is available (3+ days of data in last 2 weeks)
   useEffect(() => {
@@ -240,7 +256,7 @@ function App() {
       }
     }
     checkJourneyAvailability();
-  }, [user?.tier, user?.id, sessions.length]);
+  }, [sessions, user?.id, user?.tier]);
 
   const handleStartRecording = () => {
     if (!checkDailyLimit()) {
@@ -254,7 +270,6 @@ function App() {
   const handleRecordingComplete = useCallback(async (audioBlob: Blob, selectedDuration?: number) => {
     const duration = selectedDuration || meditationDuration;
     setMeditationDuration(duration);
-    audioBlobRef.current = audioBlob;
     setProcessingError(null);
     setScreen('processing');
     
@@ -280,7 +295,7 @@ function App() {
             setMeditationScript(progress.result.script);
           }
           if (progress.result.voiceAudioUrl) {
-            setVoiceAudioUrl(progress.result.voiceAudioUrl);
+            updateVoiceAudioUrl(progress.result.voiceAudioUrl);
           }
         }
       }, userTier, userId);
@@ -291,7 +306,7 @@ function App() {
       setCurrentMood(result.mood);
       setLocalScript(result.script);
       setMeditationScript(result.script);
-      setVoiceAudioUrl(result.voiceAudioUrl);
+      updateVoiceAudioUrl(result.voiceAudioUrl);
       
     } catch (error) {
       console.error('Error creating meditation:', error);
@@ -307,9 +322,9 @@ function App() {
       setCurrentMood(detectedMood);
       setLocalScript(script);
       setMeditationScript(script);
-      setVoiceAudioUrl(null);
+      updateVoiceAudioUrl(null);
     }
-  }, [setTranscript, setScreen, setCurrentMood, setMeditationScript, meditationDuration, user]);
+  }, [setTranscript, setScreen, setCurrentMood, setMeditationScript, meditationDuration, updateVoiceAudioUrl, user]);
 
   const handleProcessingComplete = async () => {
     // Credit is used when meditation is CREATED (after processing)
@@ -322,7 +337,7 @@ function App() {
     let summary = "A personalized meditation session";
     try {
       summary = await generateSummary(transcript || "meditation session");
-    } catch (e) {
+    } catch {
       console.log('Summary generation failed, using default');
     }
     
@@ -334,12 +349,11 @@ function App() {
       summary,
       mood: currentMood,
       meditationScript: meditationScript,
-      audioUrl: voiceAudioUrl,
+      audioUrl: isBlobUrl(voiceAudioUrl) ? null : voiceAudioUrl,
       duration: meditationDuration,
       createdAt: new Date().toISOString(),
     };
     addSession(session);
-    setCurrentSession(session);
     
     setScreen('meditation');
     setMascotState('sleeping');
@@ -357,14 +371,14 @@ function App() {
   const handleSuccessComplete = () => {
     setShowSuccess(false);
     resetMeditation();
-    setCurrentSession(null);
+    updateVoiceAudioUrl(null);
     setScreen('home');
     setMascotState('idle');
   };
 
   const handleMeditationClose = () => {
     resetMeditation();
-    setCurrentSession(null);
+    updateVoiceAudioUrl(null);
     setScreen('home');
     setMascotState('idle');
   };
@@ -393,11 +407,10 @@ function App() {
   };
 
   const handleJourneyMeditationStart = (meditation: JourneyMeditation) => {
-    setJourneyMeditation(meditation);
     setLocalMood('CALMING'); // Journey meditations are generally calming/reflective
     setLocalScript(meditation.script);
     setMeditationDuration(meditation.duration);
-    setVoiceAudioUrl(meditation.voiceAudioUrl);
+    updateVoiceAudioUrl(meditation.voiceAudioUrl);
     setScreen('meditation');
     setMascotState('sleeping');
   };
@@ -550,7 +563,7 @@ function App() {
             initial={{ opacity: 0, x: currentScreen === 'home' ? -20 : 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: currentScreen === 'home' ? 20 : -20 }}
-            transition={{ duration: 0.3 }}
+            transition={SCREEN_TRANSITION}
             style={{ height: '100%' }}
           >
             {renderScreen()}

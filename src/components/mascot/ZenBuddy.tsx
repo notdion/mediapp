@@ -1,25 +1,8 @@
 import { memo } from 'react';
 import { motion } from 'framer-motion';
 import type { MascotState } from '../../types';
+import { congratsImages, slothImages } from './slothAssets';
 import './ZenBuddy.css';
-
-// Import sloth images
-import slothStanding from '../Sloth/Sloth - Standing.png';
-import slothWaving from '../Sloth/Sloth - Waving.png';
-import slothMeditating from '../Sloth/Sloth - Meditating.png';
-import slothLaughing from '../Sloth/Sloth - Laughing.png';
-import slothSleep from '../Sloth/Sloth - Sleep.png';
-import slothSetup from '../Sloth/Sloth - Setup.png';
-import slothListening from '../Sloth/Sloth - Listening.png';
-import slothPosing from '../Sloth/Sloth - Posing.png';
-import slothCongrats from '../Sloth/Sloth - Congrats.png';
-import slothCongrats1 from '../Sloth/Sloth - Congrats(1).png';
-import slothNotifications from '../Sloth/Sloth - Notifications.png';
-import slothMail from '../Sloth/Sloth - Mail.png';
-import slothHammock from '../Sloth/Sloth - Hammock.png';
-import slothPhone from '../Sloth/Sloth - Phone.png';
-import slothHumanCursor from '../Sloth/Sloth - Human Cursor.png';
-import slothLanding from '../Sloth/Sloth - Landing.png';
 
 interface ZenBuddyProps {
   state: MascotState;
@@ -29,39 +12,13 @@ interface ZenBuddyProps {
 
 // Map states to images - updated with new images
 const stateToImage: Record<MascotState, string> = {
-  idle: slothStanding,        // Standing for main screen before meditation
-  listening: slothListening,  // Listening when recording
-  thinking: slothMeditating,
-  success: slothCongrats,     // Congrats after completion
-  celebrating: slothPosing,   // Posing for paywall
-  sleeping: slothSleep,
-  meditating: slothMeditating,
-};
-
-// Alternate congrats images
-export const congratsImages = [slothCongrats, slothCongrats1];
-
-// Profile page sloth images (standing, meditating, sleeping)
-export const profileSlothImages = [slothStanding, slothMeditating, slothSleep];
-
-// Export for use in other components
-export const slothImages = {
-  standing: slothStanding,
-  waving: slothWaving,
-  meditating: slothMeditating,
-  laughing: slothLaughing,
-  sleeping: slothSleep,
-  setup: slothSetup,
-  listening: slothListening,
-  posing: slothPosing,
-  congrats: slothCongrats,
-  congrats1: slothCongrats1,
-  notifications: slothNotifications,
-  mail: slothMail,
-  hammock: slothHammock,
-  phone: slothPhone,
-  cursor: slothHumanCursor,
-  landing: slothLanding,
+  idle: slothImages.standing,        // Standing for main screen before meditation
+  listening: slothImages.listening,  // Listening when recording
+  thinking: slothImages.meditating,
+  success: slothImages.congrats,     // Congrats after completion
+  celebrating: slothImages.posing,   // Posing for paywall
+  sleeping: slothImages.sleeping,
+  meditating: slothImages.meditating,
 };
 
 // Map states to CSS animation class names
@@ -89,7 +46,7 @@ function ZenBuddyComponent({ state, size = 'lg', variant = 0 }: ZenBuddyProps) {
   if (state === 'success' && variant !== undefined) {
     currentImage = congratsImages[variant % 2];
   } else {
-    currentImage = stateToImage[state] || slothStanding;
+    currentImage = stateToImage[state] || slothImages.standing;
   }
   
   const animationClass = stateToAnimation[state] || 'animate-float';

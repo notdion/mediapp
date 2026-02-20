@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Bell, ArrowRight, Check, Sparkles, Crown, Gift, Heart, Zap, Brain, History, Mic } from 'lucide-react';
-import { slothImages } from '../mascot/ZenBuddy';
+import { slothImages } from '../mascot/slothAssets';
 import { Button } from '../ui/Button';
 import '../mascot/ZenBuddy.css';
 
@@ -22,15 +22,7 @@ export function OnboardingScreen({ onComplete, onSkipOffer, onAcceptOffer }: Onb
   const [notificationAnimating, setNotificationAnimating] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  // Auto-advance from welcome after 2.5s
-  useEffect(() => {
-    if (step === 'welcome') {
-      const timer = setTimeout(() => handleNextStep(), 2500);
-      return () => clearTimeout(timer);
-    }
-  }, [step]);
-
-  const handleNextStep = () => {
+  const handleNextStep = useCallback(() => {
     if (isTransitioning) return;
     
     setIsTransitioning(true);
@@ -57,7 +49,15 @@ export function OnboardingScreen({ onComplete, onSkipOffer, onAcceptOffer }: Onb
           break;
       }
     }, 300);
-  };
+  }, [email, isTransitioning, name, onComplete, phone, step]);
+
+  // Auto-advance from welcome after 2.5s
+  useEffect(() => {
+    if (step === 'welcome') {
+      const timer = setTimeout(() => handleNextStep(), 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [handleNextStep, step]);
 
   const handleNotificationRequest = async () => {
     setNotificationAnimating(true);

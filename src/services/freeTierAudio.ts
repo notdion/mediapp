@@ -4,8 +4,16 @@
 // ============================================
 
 // Dynamically import all intro and outro clips
-const introModules = import.meta.glob('../components/audio/Free Intros/*.mp3', { eager: true, as: 'url' });
-const outroModules = import.meta.glob('../components/audio/Free Outros/*.mp3', { eager: true, as: 'url' });
+const introModules = import.meta.glob('../components/audio/Free Intros/*.mp3', {
+  eager: true,
+  query: '?url',
+  import: 'default'
+}) as Record<string, string>;
+const outroModules = import.meta.glob('../components/audio/Free Outros/*.mp3', {
+  eager: true,
+  query: '?url',
+  import: 'default'
+}) as Record<string, string>;
 
 // Import the silence file for gap filling
 import silenceUrl from '../components/audio/Accessories/Meditation - Silence.mp3';
@@ -47,36 +55,51 @@ export async function getAudioDurationFromUrl(url: string): Promise<number> {
   });
 }
 
-// Create silence of a specific duration by repeating/trimming the silence file
-async function createSilenceForDuration(targetSeconds: number): Promise<ArrayBuffer> {
-  const { buffer: sourceBuffer, duration: sourceDuration } = await getSilenceBuffer();
-  
-  if (targetSeconds <= 0) {
-    return new ArrayBuffer(0);
+function audioBufferToWav(audioBuffer: AudioBuffer): Blob {
+  const numChannels = audioBuffer.numberOfChannels;
+  const sampleRate = audioBuffer.sampleRate;
+  const bitsPerSample = 16;
+  const bytesPerSample = bitsPerSample / 8;
+  const blockAlign = numChannels * bytesPerSample;
+  const numSamples = audioBuffer.length;
+  const dataSize = numSamples * blockAlign;
+  const headerSize = 44;
+  const totalSize = headerSize + dataSize;
+
+  const buffer = new ArrayBuffer(totalSize);
+  const view = new DataView(buffer);
+
+  const writeString = (offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) {
+      view.setUint8(offset + i, str.charCodeAt(i));
+    }
+  };
+
+  writeString(0, 'RIFF');
+  view.setUint32(4, totalSize - 8, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * blockAlign, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitsPerSample, true);
+  writeString(36, 'data');
+  view.setUint32(40, dataSize, true);
+
+  let writeOffset = headerSize;
+  for (let i = 0; i < numSamples; i++) {
+    for (let ch = 0; ch < numChannels; ch++) {
+      const sample = Math.max(-1, Math.min(1, audioBuffer.getChannelData(ch)[i]));
+      const int16 = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+      view.setInt16(writeOffset, int16, true);
+      writeOffset += 2;
+    }
   }
-  
-  // Calculate bytes per second (approximate for MP3)
-  const bytesPerSecond = sourceBuffer.byteLength / sourceDuration;
-  const targetBytes = Math.floor(targetSeconds * bytesPerSecond);
-  
-  // If target is shorter than source, trim it
-  if (targetSeconds <= sourceDuration) {
-    return sourceBuffer.slice(0, targetBytes);
-  }
-  
-  // If target is longer, repeat the silence
-  const result = new Uint8Array(targetBytes);
-  const source = new Uint8Array(sourceBuffer);
-  let offset = 0;
-  
-  while (offset < targetBytes) {
-    const remaining = targetBytes - offset;
-    const copyLength = Math.min(source.byteLength, remaining);
-    result.set(source.subarray(0, copyLength), offset);
-    offset += copyLength;
-  }
-  
-  return result.buffer;
+
+  return new Blob([buffer], { type: 'audio/wav' });
 }
 
 // Audio clip metadata
@@ -309,56 +332,64 @@ export async function prefetchAudioBuffers(
 }
 
 // Concatenate with dynamic silence gaps to reach exactly 60 seconds
-// Uses actual silence audio file for proper gaps
+// Uses decoded PCM composition (not byte concatenation) for consistent playback.
+// This mirrors the architecture we'll use in Swift (decode -> mix -> render),
+// which keeps migration behavior deterministic across platforms.
 export async function concatenateWithSilenceGaps(
   introBuffer: ArrayBuffer,
-  introUrl: string,
   middleBuffer: ArrayBuffer,
-  middleUrl: string,
   outroBuffer: ArrayBuffer,
-  outroUrl: string
 ): Promise<Blob> {
-  // Get actual durations of all three audio pieces
-  const [introDuration, middleDuration, outroDuration] = await Promise.all([
-    getAudioDurationFromUrl(introUrl),
-    getAudioDurationFromUrl(middleUrl),
-    getAudioDurationFromUrl(outroUrl)
-  ]);
-  
-  const totalClipDuration = introDuration + middleDuration + outroDuration;
-  const targetDuration = 60;
-  const remainingTime = Math.max(1, targetDuration - totalClipDuration); // At least 1 second total gap
-  const gapDuration = remainingTime / 2; // Split between two gaps
-  
-  console.log(`[Concatenation] Intro: ${introDuration.toFixed(1)}s, Middle: ${middleDuration.toFixed(1)}s, Outro: ${outroDuration.toFixed(1)}s`);
-  console.log(`[Concatenation] Total clips: ${totalClipDuration.toFixed(1)}s, Each gap: ${gapDuration.toFixed(1)}s`);
-  
-  // Create silence buffers for the gaps
-  const [gap1Buffer, gap2Buffer] = await Promise.all([
-    createSilenceForDuration(gapDuration),
-    createSilenceForDuration(gapDuration)
-  ]);
-  
-  // Concatenate: intro + gap + middle + gap + outro
-  const totalLength = introBuffer.byteLength + gap1Buffer.byteLength + middleBuffer.byteLength + gap2Buffer.byteLength + outroBuffer.byteLength;
-  const combined = new Uint8Array(totalLength);
-  
-  let offset = 0;
-  combined.set(new Uint8Array(introBuffer), offset);
-  offset += introBuffer.byteLength;
-  
-  combined.set(new Uint8Array(gap1Buffer), offset);
-  offset += gap1Buffer.byteLength;
-  
-  combined.set(new Uint8Array(middleBuffer), offset);
-  offset += middleBuffer.byteLength;
-  
-  combined.set(new Uint8Array(gap2Buffer), offset);
-  offset += gap2Buffer.byteLength;
-  
-  combined.set(new Uint8Array(outroBuffer), offset);
-  
-  return new Blob([combined], { type: 'audio/mpeg' });
+  const audioContext = new AudioContext();
+
+  try {
+    const [introAudio, middleAudio, outroAudio] = await Promise.all([
+      audioContext.decodeAudioData(introBuffer.slice(0)),
+      audioContext.decodeAudioData(middleBuffer.slice(0)),
+      audioContext.decodeAudioData(outroBuffer.slice(0)),
+    ]);
+
+    const sampleRate = introAudio.sampleRate;
+    const numberOfChannels = Math.max(
+      introAudio.numberOfChannels,
+      middleAudio.numberOfChannels,
+      outroAudio.numberOfChannels
+    );
+
+    const totalClipDuration = introAudio.duration + middleAudio.duration + outroAudio.duration;
+    const targetDuration = 60;
+    const remainingTime = Math.max(1, targetDuration - totalClipDuration);
+    const gapDuration = remainingTime / 2;
+
+    console.log(`[Concatenation] Intro: ${introAudio.duration.toFixed(1)}s, Middle: ${middleAudio.duration.toFixed(1)}s, Outro: ${outroAudio.duration.toFixed(1)}s`);
+    console.log(`[Concatenation] Total clips: ${totalClipDuration.toFixed(1)}s, Each gap: ${gapDuration.toFixed(1)}s`);
+
+    const outputDuration = totalClipDuration + gapDuration * 2;
+    const outputLength = Math.ceil(outputDuration * sampleRate);
+    const output = audioContext.createBuffer(numberOfChannels, outputLength, sampleRate);
+
+    let writeOffset = 0;
+    const writeBuffer = (source: AudioBuffer) => {
+      for (let channelIndex = 0; channelIndex < numberOfChannels; channelIndex++) {
+        const sourceChannel = source.getChannelData(Math.min(channelIndex, source.numberOfChannels - 1));
+        output.getChannelData(channelIndex).set(sourceChannel, writeOffset);
+      }
+      writeOffset += source.length;
+    };
+    const writeSilence = (seconds: number) => {
+      writeOffset += Math.floor(seconds * sampleRate);
+    };
+
+    writeBuffer(introAudio);
+    writeSilence(gapDuration);
+    writeBuffer(middleAudio);
+    writeSilence(gapDuration);
+    writeBuffer(outroAudio);
+
+    return audioBufferToWav(output);
+  } finally {
+    await audioContext.close();
+  }
 }
 
 // Simple concatenation without gaps (for backward compatibility)
@@ -384,7 +415,7 @@ export function concatenateWithPrefetchedBuffers(
 
 // Get the target duration for the middle portion of a free tier meditation
 // Total meditation should be ~60 seconds: intro (15-24s) + middle (~18s) + outro (15-24s)
-export function getMiddleDurationForFreeTier(_introDuration: number, _outroDuration: number): number {
+export function getMiddleDurationForFreeTier(): number {
   // Fixed 18 seconds for the personalized middle portion
   return 18;
 }

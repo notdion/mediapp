@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Clock, ChevronDown } from 'lucide-react';
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { slothImages } from '../mascot/ZenBuddy';
+import { slothImages } from '../mascot/slothAssets';
 import { RecordButton } from '../ui/RecordButton';
 import { WaveformVisualizer } from '../ui/WaveformVisualizer';
 import { useAppStore } from '../../store/useAppStore';
@@ -47,7 +47,7 @@ export function RecordingScreen({ onComplete, onCancel, defaultDuration = 60, on
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
   const handleDurationSelect = (value: number) => {

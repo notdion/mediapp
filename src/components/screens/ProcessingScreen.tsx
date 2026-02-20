@@ -16,9 +16,8 @@ const processingSteps = [
 ];
 
 export function ProcessingScreen({ onComplete, currentStep: externalStep, error }: ProcessingScreenProps) {
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [progress, setProgress] = useState(0);
-  const [displayText, setDisplayText] = useState(processingSteps[0].text);
+  const [internalStepIndex, setInternalStepIndex] = useState(0);
+  const [internalProgress, setInternalProgress] = useState(0);
   const completedRef = useRef(false);
   const hasStartedRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
@@ -28,18 +27,9 @@ export function ProcessingScreen({ onComplete, currentStep: externalStep, error 
     onCompleteRef.current = onComplete;
   }, [onComplete]);
 
-  // Update display text based on external step or internal step
-  useEffect(() => {
-    if (externalStep) {
-      setDisplayText(externalStep);
-      // Map external step to index for progress
-      const stepIndex = processingSteps.findIndex(s => s.text === externalStep);
-      if (stepIndex !== -1) {
-        setCurrentStepIndex(stepIndex);
-        setProgress(((stepIndex + 1) / processingSteps.length) * 100);
-      }
-    }
-  }, [externalStep]);
+  const mappedExternalStepIndex = externalStep
+    ? processingSteps.findIndex(s => s.text === externalStep)
+    : -1;
 
   // Handle completion when processing is done (progress reaches 100 or we get final step)
   useEffect(() => {
@@ -50,7 +40,6 @@ export function ProcessingScreen({ onComplete, currentStep: externalStep, error 
       externalStep === "Let's get started!";
     if (isCompleteStep && !completedRef.current) {
       completedRef.current = true;
-      setProgress(100);
       // Short delay for visual feedback, then complete
       const timer = setTimeout(() => {
         onCompleteRef.current();
@@ -67,12 +56,11 @@ export function ProcessingScreen({ onComplete, currentStep: externalStep, error 
     // Only use fallback timing if no external steps
     if (!externalStep) {
       let totalDuration = 0;
-      const stepTimers: NodeJS.Timeout[] = [];
+      const stepTimers: Array<ReturnType<typeof setTimeout>> = [];
 
       processingSteps.forEach((step, index) => {
         const timer = setTimeout(() => {
-          setCurrentStepIndex(index);
-          setDisplayText(step.text);
+          setInternalStepIndex(index);
         }, totalDuration);
         stepTimers.push(timer);
         totalDuration += step.duration;
@@ -80,7 +68,7 @@ export function ProcessingScreen({ onComplete, currentStep: externalStep, error 
 
       // Progress animation
       const progressInterval = setInterval(() => {
-        setProgress(prev => {
+        setInternalProgress(prev => {
           if (prev >= 100) {
             clearInterval(progressInterval);
             return 100;
@@ -104,6 +92,24 @@ export function ProcessingScreen({ onComplete, currentStep: externalStep, error 
       };
     }
   }, [externalStep]);
+
+  const isCompleteStep = externalStep === 'Perfecting the timing...'
+    || externalStep === 'Ready!'
+    || externalStep === "Let's get started!";
+
+  const currentStepIndex = externalStep
+    ? (mappedExternalStepIndex >= 0 ? mappedExternalStepIndex : 0)
+    : internalStepIndex;
+
+  const progress = externalStep
+    ? (isCompleteStep
+      ? 100
+      : mappedExternalStepIndex >= 0
+        ? ((mappedExternalStepIndex + 1) / processingSteps.length) * 100
+        : 0)
+    : internalProgress;
+
+  const displayText = externalStep || processingSteps[currentStepIndex].text;
 
   return (
     <div className="processing-screen">
