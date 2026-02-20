@@ -17,6 +17,7 @@ import { getJourneyData, type DbSession } from './services/supabase';
 import type { JourneyMeditation } from './services/aiJourney';
 import type { MoodTag, Session } from './types';
 import { isBlobUrl, replaceManagedObjectUrl, revokeBlobUrl } from './utils/objectUrl';
+import { SCREEN_TRANSITION } from './theme/motion';
 
 // Sample meditation scripts for demo - base scripts that can be expanded
 const SAMPLE_SCRIPTS: Record<MoodTag, string> = {
@@ -194,6 +195,11 @@ function App() {
   const [journeyAvailable, setJourneyAvailable] = useState(false);
   const [journeySessions, setJourneySessions] = useState<DbSession[]>([]);
 
+  /**
+   * Centralized object-URL ownership for meditation audio.
+   * We keep the lifecycle here so audio URL semantics remain portable for the
+   * planned Swift migration (single owner -> predictable release timing).
+   */
   const updateVoiceAudioUrl = useCallback((nextAudioUrl: string | null) => {
     voiceAudioUrlRef.current = replaceManagedObjectUrl(voiceAudioUrlRef.current, nextAudioUrl);
     setVoiceAudioUrl(voiceAudioUrlRef.current);
@@ -557,7 +563,7 @@ function App() {
             initial={{ opacity: 0, x: currentScreen === 'home' ? -20 : 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: currentScreen === 'home' ? 20 : -20 }}
-            transition={{ duration: 0.3 }}
+            transition={SCREEN_TRANSITION}
             style={{ height: '100%' }}
           >
             {renderScreen()}

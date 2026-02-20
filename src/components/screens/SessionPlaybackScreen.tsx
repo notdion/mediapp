@@ -2,7 +2,12 @@ import { motion } from 'framer-motion';
 import { Play, Pause, Volume2, ArrowLeft } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import { ZenBuddy } from '../mascot/ZenBuddy';
-import type { Session, MoodTag } from '../../types';
+import type { Session } from '../../types';
+import { MOOD_THEMES } from '../../theme/moodThemes';
+import { FADE_TRANSITION } from '../../theme/motion';
+import { fadeAudioVolume } from '../../utils/audioFades';
+
+const AMBIENT_CIRCLE_DURATIONS = [6, 8, 10] as const;
 
 interface SessionPlaybackScreenProps {
   session: Session;
@@ -20,19 +25,7 @@ export function SessionPlaybackScreen({ session, onClose }: SessionPlaybackScree
 
   const duration = audioDuration || session.duration || 60;
 
-  const moodColors: Record<MoodTag, { primary: string; secondary: string; bg: string }> = {
-    UPLIFTING: { primary: '#FFD93D', secondary: '#FF9F43', bg: '#FFF9E6' },
-    CALMING: { primary: '#7CB78B', secondary: '#5A9E6B', bg: '#E8F5EC' },
-    ENERGIZING: { primary: '#FF9F43', secondary: '#FF6B6B', bg: '#FFF4E6' },
-    HEALING: { primary: '#5A9E6B', secondary: '#7EC8E3', bg: '#E8F5EC' },
-    FOCUSED: { primary: '#5A9E6B', secondary: '#7CB78B', bg: '#E8F5EC' },
-    SLEEPY: { primary: '#B8A9C9', secondary: '#7CB78B', bg: '#F5F3FF' },
-    ANXIOUS: { primary: '#A8D5BA', secondary: '#7CB78B', bg: '#F0F7EE' },
-    GRATEFUL: { primary: '#FF6B6B', secondary: '#FF9F43', bg: '#FFF0F0' },
-    MOTIVATED: { primary: '#FF9F43', secondary: '#FFD93D', bg: '#FFF4E6' },
-  };
-
-  const colors = moodColors[session.mood] || moodColors.CALMING;
+  const colors = MOOD_THEMES[session.mood] || MOOD_THEMES.CALMING;
 
   const togglePlayback = () => {
     const nextPlayingState = !isPlaying;
@@ -40,11 +33,18 @@ export function SessionPlaybackScreen({ session, onClose }: SessionPlaybackScree
 
     if (audioRef.current && hasPlayableAudio) {
       if (nextPlayingState) {
-        audioRef.current.play().catch(() => {
+        const activeAudio = audioRef.current;
+        activeAudio.volume = 0;
+        activeAudio.play().then(() => {
+          void fadeAudioVolume(activeAudio, 1, 700);
+        }).catch(() => {
           setIsPlaying(false);
         });
       } else {
-        audioRef.current.pause();
+        const activeAudio = audioRef.current;
+        void fadeAudioVolume(activeAudio, 0, 250).then(() => {
+          activeAudio.pause();
+        });
       }
     }
   };
@@ -134,7 +134,7 @@ export function SessionPlaybackScreen({ session, onClose }: SessionPlaybackScree
   };
 
   return (
-    <div className="session-playback-screen" style={{ background: colors.bg }}>
+    <div className="session-playback-screen" style={{ background: colors.background }}>
       {/* Header */}
       <motion.header 
         className="playback-header"
@@ -153,7 +153,7 @@ export function SessionPlaybackScreen({ session, onClose }: SessionPlaybackScree
         className="session-info"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
+        transition={{ ...FADE_TRANSITION, delay: 0.1 }}
       >
         <div 
           className="mood-badge"
@@ -166,7 +166,7 @@ export function SessionPlaybackScreen({ session, onClose }: SessionPlaybackScree
 
       {/* Ambient Background */}
       <div className="ambient-bg">
-        {[...Array(3)].map((_, i) => (
+        {AMBIENT_CIRCLE_DURATIONS.map((duration, i) => (
           <motion.div
             key={i}
             className="ambient-circle"
@@ -178,7 +178,7 @@ export function SessionPlaybackScreen({ session, onClose }: SessionPlaybackScree
               opacity: [0.2, 0.4, 0.2],
             }}
             transition={{
-              duration: 6 + i * 2,
+              duration,
               repeat: Infinity,
               ease: 'easeInOut',
             }}
@@ -191,7 +191,7 @@ export function SessionPlaybackScreen({ session, onClose }: SessionPlaybackScree
         className="playback-content"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
+        transition={{ ...FADE_TRANSITION, delay: 0.2 }}
       >
         {/* Mascot */}
         <div className="mascot-section">

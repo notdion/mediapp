@@ -332,7 +332,9 @@ export async function prefetchAudioBuffers(
 }
 
 // Concatenate with dynamic silence gaps to reach exactly 60 seconds
-// Uses actual silence audio file for proper gaps
+// Uses decoded PCM composition (not byte concatenation) for consistent playback.
+// This mirrors the architecture we'll use in Swift (decode -> mix -> render),
+// which keeps migration behavior deterministic across platforms.
 export async function concatenateWithSilenceGaps(
   introBuffer: ArrayBuffer,
   middleBuffer: ArrayBuffer,

@@ -1,9 +1,12 @@
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Play, Pause, X, Volume2, VolumeX } from 'lucide-react';
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useCallback, useEffect, useState, useRef, useMemo } from 'react';
 import { slothImages } from '../mascot/slothAssets';
 import { useAppStore } from '../../store/useAppStore';
 import type { MoodTag } from '../../types';
+import { MOOD_THEMES } from '../../theme/moodThemes';
+import { FADE_TRANSITION } from '../../theme/motion';
+import { fadeAudioVolume } from '../../utils/audioFades';
 import '../mascot/ZenBuddy.css';
 
 // Clean script text by removing SSML tags for display
@@ -67,6 +70,16 @@ const ALL_TRACKS = [
 ];
 
 const IMAGE_SWAP_DELAYS_MS = [20000, 26000, 32000, 38000, 44000, 50000];
+const SOFT_START_COUNTDOWN_SECONDS = 3;
+const AUDIO_FADE_IN_MS = 1400;
+const AUDIO_FADE_OUT_MS = 450;
+const AMBIENT_CIRCLE_MOTION = [
+  { duration: 8, xOffset: 0, yOffset: 50 },
+  { duration: 10, xOffset: 48, yOffset: 15 },
+  { duration: 12, xOffset: 30, yOffset: -40 },
+  { duration: 14, xOffset: -30, yOffset: -40 },
+  { duration: 16, xOffset: -48, yOffset: 15 },
+] as const;
 
 /**
  * Select the best track for the meditation duration
@@ -113,9 +126,13 @@ export function MeditationScreen({ mood, script, duration = 60, voiceAudioUrl, o
   const [currentSlothImage, setCurrentSlothImage] = useState(slothImages.meditating);
   const [isMusicMuted, setIsMusicMuted] = useState(false);
   const [isVoiceMuted, setIsVoiceMuted] = useState(false);
+  const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
   
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const imageSwapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startPlaybackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playbackActionIdRef = useRef(0);
   const musicAudioRef = useRef<HTMLAudioElement | null>(null);
   const voiceAudioRef = useRef<HTMLAudioElement | null>(null);
   const imageSwapIndexRef = useRef(0);
@@ -125,20 +142,11 @@ export function MeditationScreen({ mood, script, duration = 60, voiceAudioUrl, o
   // Instead, we measure actual elapsed wall-clock time with Date.now().
   const playStartTimestampRef = useRef<number>(0);   // Date.now() when current play session began
   const accumulatedSecondsRef = useRef<number>(0);    // Total seconds accumulated from previous play sessions (before pause)
+  // Base music volume (before any fading)
+  const BASE_MUSIC_VOLUME = 0.15;
+  const FADE_DURATION = 2; // Fade out over last 2 seconds
 
-  const moodColors: Record<MoodTag, { primary: string; secondary: string; bg: string }> = {
-    UPLIFTING: { primary: '#FFD93D', secondary: '#FF9F43', bg: '#FFF9E6' },
-    CALMING: { primary: '#7CB78B', secondary: '#5A9E6B', bg: '#E8F5EC' },
-    ENERGIZING: { primary: '#FF9F43', secondary: '#FF6B6B', bg: '#FFF4E6' },
-    HEALING: { primary: '#5A9E6B', secondary: '#7EC8E3', bg: '#E8F5EC' },
-    FOCUSED: { primary: '#5A9E6B', secondary: '#7CB78B', bg: '#E8F5EC' },
-    SLEEPY: { primary: '#B8A9C9', secondary: '#7CB78B', bg: '#F5F3FF' },
-    ANXIOUS: { primary: '#A8D5BA', secondary: '#7CB78B', bg: '#F0F7EE' },
-    GRATEFUL: { primary: '#FF6B6B', secondary: '#FF9F43', bg: '#FFF0F0' },
-    MOTIVATED: { primary: '#FF9F43', secondary: '#FFD93D', bg: '#FFF4E6' },
-  };
-
-  const colors = moodColors[mood] || moodColors.CALMING;
+  const colors = MOOD_THEMES[mood] || MOOD_THEMES.CALMING;
 
   // Initialize background music - select appropriate track for duration
   useEffect(() => {
@@ -222,62 +230,131 @@ export function MeditationScreen({ mood, script, duration = 60, voiceAudioUrl, o
     }
   }, [isVoiceMuted]);
 
+  const clearPreparationTimers = useCallback(() => {
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+    if (startPlaybackTimerRef.current) {
+      clearTimeout(startPlaybackTimerRef.current);
+      startPlaybackTimerRef.current = null;
+    }
+  }, []);
+
   // Random swap between meditating and sleeping images
-  const scheduleImageSwap = () => {
+  const scheduleImageSwap = useCallback(function scheduleNextImageSwap() {
     const delay = IMAGE_SWAP_DELAYS_MS[imageSwapIndexRef.current % IMAGE_SWAP_DELAYS_MS.length];
     imageSwapIndexRef.current += 1;
     imageSwapTimerRef.current = setTimeout(() => {
       setCurrentSlothImage(prev => 
         prev === slothImages.meditating ? slothImages.sleeping : slothImages.meditating
       );
-      scheduleImageSwap(); // Schedule next swap
+      scheduleNextImageSwap(); // Schedule next swap
     }, delay);
-  };
+  }, []);
 
-  const togglePlayback = () => {
-    const newIsPlaying = !isPlaying;
-    setLocalPlaying(newIsPlaying);
-    setIsPlaying(newIsPlaying);
-    setMascotState(newIsPlaying ? 'meditating' : 'idle');
-    
-    if (newIsPlaying) {
-      setCurrentSlothImage(slothImages.meditating);
-      scheduleImageSwap();
-      // Reset volumes before starting (in case they were faded out)
-      if (musicAudioRef.current) {
-        musicAudioRef.current.volume = 0.15;
-        musicAudioRef.current.play().catch(() => {});
-      }
-      if (voiceAudioRef.current) {
-        voiceAudioRef.current.volume = 1.0;
-        voiceAudioRef.current.play().catch(() => {});
-      }
-    } else {
-      if (imageSwapTimerRef.current) {
-        clearTimeout(imageSwapTimerRef.current);
-      }
-      // Pause both music and voice
-      if (musicAudioRef.current) {
-        musicAudioRef.current.pause();
-      }
-      if (voiceAudioRef.current) {
-        voiceAudioRef.current.pause();
+  const startPlaybackNow = useCallback(async () => {
+    playbackActionIdRef.current += 1;
+    const actionId = playbackActionIdRef.current;
+
+    setLocalPlaying(true);
+    setIsPlaying(true);
+    setMascotState('meditating');
+    setCurrentSlothImage(slothImages.meditating);
+    scheduleImageSwap();
+
+    if (musicAudioRef.current) {
+      musicAudioRef.current.volume = isMusicMuted ? BASE_MUSIC_VOLUME : 0;
+      await musicAudioRef.current.play().catch(() => undefined);
+      if (!isMusicMuted && actionId === playbackActionIdRef.current) {
+        void fadeAudioVolume(musicAudioRef.current, BASE_MUSIC_VOLUME, AUDIO_FADE_IN_MS);
       }
     }
+
+    if (voiceAudioRef.current) {
+      voiceAudioRef.current.volume = isVoiceMuted ? 1 : 0;
+      await voiceAudioRef.current.play().catch(() => undefined);
+      if (!isVoiceMuted && actionId === playbackActionIdRef.current) {
+        void fadeAudioVolume(voiceAudioRef.current, 1, AUDIO_FADE_IN_MS);
+      }
+    }
+  }, [isMusicMuted, isVoiceMuted, scheduleImageSwap, setIsPlaying, setMascotState]);
+
+  const pausePlaybackNow = useCallback(async () => {
+    playbackActionIdRef.current += 1;
+    clearPreparationTimers();
+    setCountdownSeconds(null);
+
+    if (imageSwapTimerRef.current) {
+      clearTimeout(imageSwapTimerRef.current);
+      imageSwapTimerRef.current = null;
+    }
+
+    setLocalPlaying(false);
+    setIsPlaying(false);
+    setMascotState('idle');
+
+    if (playStartTimestampRef.current > 0) {
+      accumulatedSecondsRef.current += (Date.now() - playStartTimestampRef.current) / 1000;
+      playStartTimestampRef.current = 0;
+    }
+
+    const activeMusic = musicAudioRef.current;
+    const activeVoice = voiceAudioRef.current;
+
+    if (activeMusic) {
+      if (!isMusicMuted) {
+        await fadeAudioVolume(activeMusic, 0, AUDIO_FADE_OUT_MS);
+      }
+      activeMusic.pause();
+    }
+    if (activeVoice) {
+      if (!isVoiceMuted) {
+        await fadeAudioVolume(activeVoice, 0, AUDIO_FADE_OUT_MS);
+      }
+      activeVoice.pause();
+    }
+  }, [clearPreparationTimers, isMusicMuted, isVoiceMuted, setIsPlaying, setMascotState]);
+
+  const beginSoftStart = useCallback(() => {
+    clearPreparationTimers();
+    setCountdownSeconds(SOFT_START_COUNTDOWN_SECONDS);
+
+    countdownTimerRef.current = setInterval(() => {
+      setCountdownSeconds((previous) => {
+        if (previous === null) return previous;
+        return previous > 1 ? previous - 1 : 1;
+      });
+    }, 1000);
+
+    startPlaybackTimerRef.current = setTimeout(() => {
+      clearPreparationTimers();
+      setCountdownSeconds(null);
+      void startPlaybackNow();
+    }, SOFT_START_COUNTDOWN_SECONDS * 1000);
+  }, [clearPreparationTimers, startPlaybackNow]);
+
+  const togglePlayback = () => {
+    if (isPlaying) {
+      void pausePlaybackNow();
+      return;
+    }
+    if (countdownSeconds !== null) {
+      return;
+    }
+    if (currentTime <= 0.1) {
+      beginSoftStart();
+      return;
+    }
+    void startPlaybackNow();
   };
 
   const toggleMusicMute = () => {
     setIsMusicMuted(prev => !prev);
   };
 
-  const toggleVoiceMute = () => {
-    setIsVoiceMuted(prev => !prev);
-  };
+  const toggleVoiceMute = () => setIsVoiceMuted(prev => !prev);
 
-  // Base music volume (before any fading)
-  const BASE_MUSIC_VOLUME = 0.15;
-  const FADE_DURATION = 2; // Fade out over last 2 seconds
-  
   useEffect(() => {
     if (isPlaying) {
       // Record wall-clock start of this play session
@@ -312,15 +389,30 @@ export function MeditationScreen({ mood, script, duration = 60, voiceAudioUrl, o
         if (elapsed >= duration) {
           setLocalPlaying(false);
           setIsPlaying(false);
+          clearPreparationTimers();
+          setCountdownSeconds(null);
           if (imageSwapTimerRef.current) {
             clearTimeout(imageSwapTimerRef.current);
+            imageSwapTimerRef.current = null;
           }
           // Stop both audio sources
           if (musicAudioRef.current) {
-            musicAudioRef.current.pause();
+            if (!isMusicMuted) {
+              void fadeAudioVolume(musicAudioRef.current, 0, AUDIO_FADE_OUT_MS).then(() => {
+                musicAudioRef.current?.pause();
+              });
+            } else {
+              musicAudioRef.current.pause();
+            }
           }
           if (voiceAudioRef.current) {
-            voiceAudioRef.current.pause();
+            if (!isVoiceMuted) {
+              void fadeAudioVolume(voiceAudioRef.current, 0, AUDIO_FADE_OUT_MS).then(() => {
+                voiceAudioRef.current?.pause();
+              });
+            } else {
+              voiceAudioRef.current.pause();
+            }
           }
           clearInterval(timerRef.current!);
           // Reset accumulated time for next session
@@ -328,7 +420,7 @@ export function MeditationScreen({ mood, script, duration = 60, voiceAudioUrl, o
           playStartTimestampRef.current = 0;
           setTimeout(onComplete, 1000);
         }
-      }, 100);
+      }, 200);
     } else {
       // When pausing: save elapsed time from this play session
       if (playStartTimestampRef.current > 0) {
@@ -348,16 +440,18 @@ export function MeditationScreen({ mood, script, duration = 60, voiceAudioUrl, o
         playStartTimestampRef.current = 0;
       }
     };
-  }, [isMusicMuted, isPlaying, isVoiceMuted, duration, onComplete, setIsPlaying, setPlaybackProgress]);
+  }, [clearPreparationTimers, isMusicMuted, isPlaying, isVoiceMuted, duration, onComplete, setIsPlaying, setPlaybackProgress]);
 
   // Cleanup image swap timer on unmount
   useEffect(() => {
     return () => {
+      clearPreparationTimers();
       if (imageSwapTimerRef.current) {
         clearTimeout(imageSwapTimerRef.current);
+        imageSwapTimerRef.current = null;
       }
     };
-  }, []);
+  }, [clearPreparationTimers]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -366,7 +460,7 @@ export function MeditationScreen({ mood, script, duration = 60, voiceAudioUrl, o
   };
 
   return (
-    <div className="meditation-screen" style={{ background: colors.bg }}>
+    <div className="meditation-screen" style={{ background: colors.background }}>
       {/* Close Button */}
       <motion.button 
         className="close-button"
@@ -392,7 +486,7 @@ export function MeditationScreen({ mood, script, duration = 60, voiceAudioUrl, o
 
       {/* Ambient Background */}
       <div className="ambient-bg">
-        {[...Array(5)].map((_, i) => (
+        {AMBIENT_CIRCLE_MOTION.map((circle, i) => (
           <motion.div
             key={i}
             className="ambient-circle"
@@ -402,11 +496,11 @@ export function MeditationScreen({ mood, script, duration = 60, voiceAudioUrl, o
             animate={{
               scale: [1, 1.5, 1],
               opacity: [0.3, 0.6, 0.3],
-              x: [0, Math.sin(i * 72) * 50, 0],
-              y: [0, Math.cos(i * 72) * 50, 0],
+              x: [0, circle.xOffset, 0],
+              y: [0, circle.yOffset, 0],
             }}
             transition={{
-              duration: 8 + i * 2,
+              duration: circle.duration,
               repeat: Infinity,
               ease: 'easeInOut',
             }}
@@ -489,6 +583,21 @@ export function MeditationScreen({ mood, script, duration = 60, voiceAudioUrl, o
                 {isPlaying ? <Pause size={32} /> : <Play size={32} style={{ marginLeft: 4 }} />}
               </motion.button>
             </div>
+
+            <AnimatePresence>
+              {countdownSeconds !== null && (
+                <motion.div
+                  className="soft-start-overlay"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={FADE_TRANSITION}
+                >
+                  <span className="soft-start-title">Breathe in</span>
+                  <span className="soft-start-count">{countdownSeconds}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Time Display */}
@@ -686,6 +795,36 @@ export function MeditationScreen({ mood, script, duration = 60, voiceAudioUrl, o
           justify-content: center;
           box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
           cursor: pointer;
+        }
+
+        .soft-start-overlay {
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.82);
+          backdrop-filter: blur(6px);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          z-index: 6;
+          pointer-events: none;
+        }
+
+        .soft-start-title {
+          font-size: 0.72rem;
+          font-weight: 700;
+          color: #6C7D6C;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+        }
+
+        .soft-start-count {
+          font-size: 2rem;
+          font-weight: 900;
+          color: #1A2E1A;
+          line-height: 1;
         }
 
         .time-display {
