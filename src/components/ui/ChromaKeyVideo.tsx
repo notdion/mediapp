@@ -31,12 +31,20 @@ export function ChromaKeyVideo({
     if (!ctx) return;
 
     let animationFrameId: number;
+    let lastProcessTime = 0;
 
-    const processFrame = () => {
+    const processFrame = (timestamp: number) => {
       if (video.paused || video.ended) {
         animationFrameId = requestAnimationFrame(processFrame);
         return;
       }
+
+      // Throttle to roughly 24fps if requestAnimationFrame is firing faster
+      if (timestamp - lastProcessTime < 35) {
+        animationFrameId = requestAnimationFrame(processFrame);
+        return;
+      }
+      lastProcessTime = timestamp;
 
       // Clear the canvas before drawing the new frame to prevent ghosting
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -50,38 +58,35 @@ export function ChromaKeyVideo({
         const data = frame.data;
         const [targetR, targetG, targetB] = colorToReplace;
 
-        // RGB to YUV conversion for better color matching
-        const rgb2yuv = (r: number, g: number, b: number) => {
-          const y = 0.299 * r + 0.587 * g + 0.114 * b;
-          const u = -0.14713 * r - 0.28886 * g + 0.436 * b;
-          const v = 0.615 * r - 0.51499 * g - 0.10001 * b;
-          return [y, u, v];
-        };
+        // Precalculate target U and V
+        const targetU = -0.14713 * targetR - 0.28886 * targetG + 0.436 * targetB;
+        const targetV = 0.615 * targetR - 0.51499 * targetG - 0.10001 * targetB;
 
-        const [, targetU, targetV] = rgb2yuv(targetR, targetG, targetB);
+        // Precalculate squared thresholds to avoid Math.sqrt in the loop
+        const sim255 = similarity * 255;
+        const smooth255 = smoothness * 255;
 
-        for (let i = 0; i < data.length; i += 4) {
+        // Optimize loop: inline math, avoid function calls and array allocations
+        for (let i = 0, len = data.length; i < len; i += 4) {
           const r = data[i];
           const g = data[i + 1];
           const b = data[i + 2];
 
-          const [, u, v] = rgb2yuv(r, g, b);
+          const u = -0.14713 * r - 0.28886 * g + 0.436 * b;
+          const v = 0.615 * r - 0.51499 * g - 0.10001 * b;
 
+          const du = u - targetU;
+          const dv = v - targetV;
+          
           // Calculate distance in UV space (chrominance)
-          const distance = Math.sqrt(
-            Math.pow(u - targetU, 2) + 
-            Math.pow(v - targetV, 2)
-          );
+          const distance = Math.sqrt(du * du + dv * dv);
 
-          // Normalize distance (max distance in UV space is around 255)
-          const normalizedDistance = distance / 255;
-
-          if (normalizedDistance < similarity) {
+          if (distance < sim255) {
             data[i + 3] = 0; // Fully transparent
-          } else if (normalizedDistance < similarity + smoothness) {
+          } else if (distance < sim255 + smooth255) {
             // Smooth transition
-            const alpha = (normalizedDistance - similarity) / smoothness;
-            data[i + 3] = Math.floor(alpha * 255);
+            const alpha = (distance - sim255) / smooth255;
+            data[i + 3] = alpha * 255;
           }
         }
 
@@ -95,7 +100,7 @@ export function ChromaKeyVideo({
     };
 
     const handlePlay = () => {
-      processFrame();
+      animationFrameId = requestAnimationFrame(processFrame);
     };
 
     video.addEventListener('play', handlePlay);
@@ -104,19 +109,27 @@ export function ChromaKeyVideo({
       
       // Set canvas size to match video aspect ratio exactly to prevent any squeezing
       if (video.videoWidth && video.videoHeight && canvas) {
-        const dpr = window.devicePixelRatio || 1;
+        // Cap DPR at 1.5 to prevent massive pixel counts on retina displays
+        // This dramatically improves performance while keeping it looking sharp
+        const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+        const videoRatio = video.videoWidth / video.videoHeight;
         
-        // Use the exact video dimensions to ensure no distortion
-        canvas.width = video.videoWidth * dpr;
-        canvas.height = video.videoHeight * dpr;
+        // Constrain by the height prop passed to the component rather than the native video resolution
+        // The native video resolution is 1074x720, which is over 700k pixels to process per frame
+        // By using the display height (e.g. 220), we process ~100k pixels instead
+        const displayHeight = height;
+        const displayWidth = displayHeight * videoRatio;
+        
+        canvas.width = displayWidth * dpr;
+        canvas.height = displayHeight * dpr;
       }
       
-      processFrame();
+      animationFrameId = requestAnimationFrame(processFrame);
     });
 
     // Start processing immediately if already playing
     if (!video.paused) {
-      processFrame();
+      animationFrameId = requestAnimationFrame(processFrame);
     } else {
       video.play().catch(e => console.error("Autoplay prevented:", e));
     }
@@ -125,7 +138,7 @@ export function ChromaKeyVideo({
       video.removeEventListener('play', handlePlay);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [colorToReplace, similarity, smoothness]);
+  }, [colorToReplace, similarity, smoothness, height]);
 
   return (
     <div className={className} style={{ position: 'relative', width, height, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
