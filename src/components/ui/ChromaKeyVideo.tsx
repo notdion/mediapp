@@ -83,6 +83,7 @@ export function ChromaKeyVideo({
         ctx.putImageData(frame, 0, 0);
       } catch (e) {
         // Ignore errors (e.g., cross-origin issues)
+        console.error("ChromaKey error:", e);
       }
 
       animationFrameId = requestAnimationFrame(processFrame);
@@ -93,10 +94,16 @@ export function ChromaKeyVideo({
     };
 
     video.addEventListener('play', handlePlay);
+    video.addEventListener('loadeddata', () => {
+      video.play().catch(e => console.error("Autoplay prevented:", e));
+      processFrame();
+    });
 
     // Start processing immediately if already playing
     if (!video.paused) {
       processFrame();
+    } else {
+      video.play().catch(e => console.error("Autoplay prevented:", e));
     }
 
     return () => {
@@ -114,8 +121,7 @@ export function ChromaKeyVideo({
         loop
         muted
         playsInline
-        crossOrigin="anonymous"
-        style={{ display: 'none' }}
+        style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
       />
       <canvas
         ref={canvasRef}

@@ -389,9 +389,9 @@ export function OnboardingScreen({ onComplete, onSkipOffer, onAcceptOffer }: Onb
                   src={mailVideo} 
                   width={280} 
                   height={280} 
-                  colorToReplace={[0, 255, 0]} 
-                  similarity={0.4} 
-                  smoothness={0.1} 
+                  colorToReplace={[58, 180, 187]} 
+                  similarity={0.15} 
+                  smoothness={0.05} 
                 />
               </motion.div>
 
@@ -477,9 +477,9 @@ export function OnboardingScreen({ onComplete, onSkipOffer, onAcceptOffer }: Onb
                   src={phoneVideo} 
                   width={280} 
                   height={280} 
-                  colorToReplace={[0, 255, 0]} 
-                  similarity={0.4} 
-                  smoothness={0.1} 
+                  colorToReplace={[79, 203, 226]} 
+                  similarity={0.15} 
+                  smoothness={0.05} 
                 />
               </motion.div>
 
