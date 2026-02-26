@@ -387,8 +387,8 @@ export function OnboardingScreen({ onComplete, onSkipOffer, onAcceptOffer }: Onb
               >
                 <ChromaKeyVideo 
                   src={mailVideo} 
-                  width={280} 
-                  height={280} 
+                  width={220} 
+                  height={220} 
                   colorToReplace={[58, 180, 187]} 
                   similarity={0.15} 
                   smoothness={0.05} 
@@ -475,8 +475,8 @@ export function OnboardingScreen({ onComplete, onSkipOffer, onAcceptOffer }: Onb
               >
                 <ChromaKeyVideo 
                   src={phoneVideo} 
-                  width={280} 
-                  height={280} 
+                  width={300} 
+                  height={200} 
                   colorToReplace={[79, 203, 226]} 
                   similarity={0.15} 
                   smoothness={0.05} 
@@ -995,10 +995,15 @@ export function OnboardingScreen({ onComplete, onSkipOffer, onAcceptOffer }: Onb
           filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.15));
         }
 
-        .mail-mascot,
+        .mail-mascot {
+          width: 220px;
+          height: 220px;
+        }
+
         .phone-mascot {
-          width: 280px;
-          height: 280px;
+          width: 300px;
+          height: 200px;
+          margin-left: -10px; /* Center it despite being wider */
         }
 
         .page-title {

@@ -38,6 +38,11 @@ export function ChromaKeyVideo({
         return;
       }
 
+      // Clear the canvas before drawing the new frame to prevent ghosting
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Since we set canvas dimensions exactly to video ratio in loadeddata, 
+      // we can just draw it directly to fill the canvas
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       
       try {
@@ -96,6 +101,16 @@ export function ChromaKeyVideo({
     video.addEventListener('play', handlePlay);
     video.addEventListener('loadeddata', () => {
       video.play().catch(e => console.error("Autoplay prevented:", e));
+      
+      // Set canvas size to match video aspect ratio exactly to prevent any squeezing
+      if (video.videoWidth && video.videoHeight && canvas) {
+        const dpr = window.devicePixelRatio || 1;
+        
+        // Use the exact video dimensions to ensure no distortion
+        canvas.width = video.videoWidth * dpr;
+        canvas.height = video.videoHeight * dpr;
+      }
+      
       processFrame();
     });
 
@@ -113,7 +128,7 @@ export function ChromaKeyVideo({
   }, [colorToReplace, similarity, smoothness]);
 
   return (
-    <div className={className} style={{ position: 'relative', width, height }}>
+    <div className={className} style={{ position: 'relative', width, height, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
       <video
         ref={videoRef}
         src={src}
@@ -125,8 +140,6 @@ export function ChromaKeyVideo({
       />
       <canvas
         ref={canvasRef}
-        width={width}
-        height={height}
         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
       />
     </div>
