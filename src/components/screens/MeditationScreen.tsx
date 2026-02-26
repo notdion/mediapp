@@ -112,11 +112,11 @@ export function MeditationScreen({ mood, script, duration = 60, voiceAudioUrl, o
   const [isMusicMuted, setIsMusicMuted] = useState(false);
   const [isVoiceMuted, setIsVoiceMuted] = useState(false);
   
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const imageSwapTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const imageSwapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const musicAudioRef = useRef<HTMLAudioElement | null>(null);
   const voiceAudioRef = useRef<HTMLAudioElement | null>(null);
-  const currentTrackIndexRef = useRef(0);
+  // const currentTrackIndexRef = useRef(0);
   
   // Real-time tracking refs to eliminate timer drift.
   // setInterval(fn, 100) drifts ~8-10ms per tick, accumulating 15-25s of error over 5 minutes.

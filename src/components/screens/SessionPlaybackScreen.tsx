@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Play, Pause, X, Volume2, ArrowLeft } from 'lucide-react';
+import { Play, Pause, Volume2, ArrowLeft } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import { ZenBuddy } from '../mascot/ZenBuddy';
 import type { Session, MoodTag } from '../../types';
@@ -13,7 +13,7 @@ export function SessionPlaybackScreen({ session, onClose }: SessionPlaybackScree
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const duration = session.duration || 60;
 

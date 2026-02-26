@@ -67,7 +67,7 @@ export function ProcessingScreen({ onComplete, currentStep: externalStep, error 
     // Only use fallback timing if no external steps
     if (!externalStep) {
       let totalDuration = 0;
-      const stepTimers: NodeJS.Timeout[] = [];
+      const stepTimers: ReturnType<typeof setTimeout>[] = [];
 
       processingSteps.forEach((step, index) => {
         const timer = setTimeout(() => {

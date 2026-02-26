@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, Infinity, Brain, Shield, Zap } from 'lucide-react';
+import { X, Sparkles, Infinity as InfinityIcon, Brain, Shield, Zap } from 'lucide-react';
 import { Button } from './Button';
 import { slothImages } from '../mascot/ZenBuddy';
 import '../mascot/ZenBuddy.css';
@@ -14,7 +14,7 @@ const sparkleColors = ['#FFD93D', '#FF6B6B', '#58CC9C', '#54C7FC', '#9B7DFF', '#
 
 export function PaywallModal({ isOpen, onClose, onUpgrade }: PaywallModalProps) {
   const features = [
-    { icon: <Infinity size={20} />, text: 'Unlimited daily meditations' },
+    { icon: <InfinityIcon size={20} />, text: 'Unlimited daily meditations' },
     { icon: <Brain size={20} />, text: 'AI remembers your journey' },
     { icon: <Zap size={20} />, text: '60 second voice input' },
     { icon: <Shield size={20} />, text: '1 streak freeze per month' },

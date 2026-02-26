@@ -183,7 +183,7 @@ function App() {
   const [currentMood, setLocalMood] = useState<MoodTag>('CALMING');
   const [meditationScript, setLocalScript] = useState('');
   const [meditationDuration, setMeditationDuration] = useState(60); // Default 60 seconds
-  const [currentSession, setCurrentSession] = useState<Session | null>(null);
+  const [, setCurrentSession] = useState<Session | null>(null);
   const [playingSession, setPlayingSession] = useState<Session | null>(null);
   const [voiceAudioUrl, setVoiceAudioUrl] = useState<string | null>(null);
   const [processingStep, setProcessingStep] = useState('Processing...');
@@ -193,7 +193,7 @@ function App() {
   // AI Journey state
   const [journeyAvailable, setJourneyAvailable] = useState(false);
   const [journeySessions, setJourneySessions] = useState<DbSession[]>([]);
-  const [journeyMeditation, setJourneyMeditation] = useState<JourneyMeditation | null>(null);
+  const [, setJourneyMeditation] = useState<JourneyMeditation | null>(null);
   
   // Check if AI Journey is available (3+ days of data in last 2 weeks)
   useEffect(() => {

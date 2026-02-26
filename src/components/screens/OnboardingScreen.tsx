@@ -3,7 +3,12 @@ import { useState, useEffect } from 'react';
 import { Bell, ArrowRight, Check, Sparkles, Crown, Gift, Heart, Zap, Brain, History, Mic } from 'lucide-react';
 import { slothImages } from '../mascot/ZenBuddy';
 import { Button } from '../ui/Button';
+import { ChromaKeyVideo } from '../ui/ChromaKeyVideo';
 import '../mascot/ZenBuddy.css';
+
+// Import videos
+import mailVideo from '../Sloth/Sloth - Mail Video.mp4';
+import phoneVideo from '../Sloth/Sloth - Phone Video (new).mp4';
 
 type OnboardingStep = 'welcome' | 'notifications' | 'name' | 'email' | 'phone' | 'offer';
 
@@ -21,14 +26,6 @@ export function OnboardingScreen({ onComplete, onSkipOffer, onAcceptOffer }: Onb
   const [notificationGranted, setNotificationGranted] = useState(false);
   const [notificationAnimating, setNotificationAnimating] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
-
-  // Auto-advance from welcome after 2.5s
-  useEffect(() => {
-    if (step === 'welcome') {
-      const timer = setTimeout(() => handleNextStep(), 2500);
-      return () => clearTimeout(timer);
-    }
-  }, [step]);
 
   const handleNextStep = () => {
     if (isTransitioning) return;
@@ -58,6 +55,14 @@ export function OnboardingScreen({ onComplete, onSkipOffer, onAcceptOffer }: Onb
       }
     }, 300);
   };
+
+  // Auto-advance from welcome after 2.5s
+  useEffect(() => {
+    if (step === 'welcome') {
+      const timer = setTimeout(() => handleNextStep(), 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [step]);
 
   const handleNotificationRequest = async () => {
     setNotificationAnimating(true);
@@ -380,7 +385,14 @@ export function OnboardingScreen({ onComplete, onSkipOffer, onAcceptOffer }: Onb
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', damping: 12, delay: 0.1 }}
               >
-                <img src={slothImages.mail} alt="" />
+                <ChromaKeyVideo 
+                  src={mailVideo} 
+                  width={280} 
+                  height={280} 
+                  colorToReplace={[0, 255, 0]} 
+                  similarity={0.4} 
+                  smoothness={0.1} 
+                />
               </motion.div>
 
               <motion.h2
@@ -461,7 +473,14 @@ export function OnboardingScreen({ onComplete, onSkipOffer, onAcceptOffer }: Onb
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', damping: 12, delay: 0.1 }}
               >
-                <img src={slothImages.phone} alt="" />
+                <ChromaKeyVideo 
+                  src={phoneVideo} 
+                  width={280} 
+                  height={280} 
+                  colorToReplace={[0, 255, 0]} 
+                  similarity={0.4} 
+                  smoothness={0.1} 
+                />
               </motion.div>
 
               <motion.h2
